@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --background: #090D16;
+  --foreground: #E5E7EB;
+  --card-bg: #111827;
+  --border-color: #1F2937;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Tactical custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090D16;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1F2937;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Subtle grid background pattern */
+.bg-tactical-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(31, 41, 55, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(31, 41, 55, 0.25) 1px, transparent 1px);
+}
