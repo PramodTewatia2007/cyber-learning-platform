@@ -40,7 +40,7 @@ export async function GET(
 
     if (objectKey.endsWith('.md') || objectKey.endsWith('.txt')) {
       return new NextResponse(
-        `# ${filename}\n\nThis lesson asset is hosted on your Cloudflare R2 bucket at \`${objectKey}\`.\nRun \`npm run migrate\` to sync your Google Drive library to R2.`,
+        `# ${filename}\n\n### Self-Owned LMS Storage Info\nThis course asset is part of the optional Cloudflare R2 cloud storage pipeline (\`${objectKey}\`).\n\n- **Native Google Drive Access:** All original course documents, notes, and lab files can be accessed directly inside this course via the **Google Drive Files & Labs** folder button in the sidebar (zero setup needed).\n- **Cloudflare R2 Migration (Optional):** If you wish to migrate your files to Cloudflare R2, configure your bucket credentials in \`.env.local\` and run \`npm run migrate\`.`,
         {
           headers: {
             'Content-Type': 'text/markdown; charset=utf-8',

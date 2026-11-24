@@ -49,7 +49,9 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [showReportModal, setShowReportModal] = useState(false);
   const [dynamicModules, setDynamicModules] = useState<CourseModule[]>(course.modules || []);
-  const [isDriveFolderFallback, setIsDriveFolderFallback] = useState(false);
+  const [isDriveFolderFallback, setIsDriveFolderFallback] = useState<boolean>(
+    course.sourceType === 'gdrive_folder' || (!course.modules || course.modules.length === 0)
+  );
 
   const accentColor = course.accentColor || course.trackAccent || '#10B981';
   const configured = isSupabaseConfigured();
@@ -294,8 +296,34 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
 
         {/* Lessons Tree */}
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {/* Quick Access: Google Drive Folder */}
+          {course.gdriveFolderId && (
+            <div className="rounded-xl border border-gray-800/80 bg-[#070B14] overflow-hidden p-1">
+              <button
+                onClick={() => {
+                  setActiveLesson(null);
+                  setActiveModuleName('Google Drive Materials');
+                  setIsDriveFolderFallback(true);
+                }}
+                className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all flex items-center justify-between group ${
+                  !activeLesson && isDriveFolderFallback
+                    ? 'bg-amber-500/15 border border-amber-500/30 text-white font-medium'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#111827]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">Google Drive Files & Labs</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400 border border-amber-800/40">
+                  Drive
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* If pure folder embed mode */}
-          {isDriveFolderFallback && (
+          {isDriveFolderFallback && dynamicModules.length === 0 && (
             <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-800/30 text-xs text-amber-200">
               <div className="flex items-center gap-2 font-semibold mb-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -521,7 +549,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
               {/* Personal Notes Drawer */}
               <LessonNotes fileId={activeLesson.id} lessonName={activeLesson.title} />
             </div>
-          ) : isDriveFolderFallback && course.gdriveFolderId ? (
+          ) : (isDriveFolderFallback || course.sourceType === 'gdrive_folder') && course.gdriveFolderId ? (
             /* Zero-Config Folder Fallback */
             <div className="flex-1 flex flex-col">
               <DriveFolderEmbedViewer

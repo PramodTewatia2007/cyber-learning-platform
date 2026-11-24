@@ -2,6 +2,7 @@ import { CatalogCourse, DbCourse, DbLesson } from '@/types';
 import { getCourse as getCatalogCourse } from '@/lib/catalog';
 import { CANONICAL_COURSES, CANONICAL_TRACKS, INITIAL_ATTACHED_LESSONS } from '@/config/seedData';
 import { getSupabaseServerClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
+import { isR2Configured } from '@/lib/r2';
 
 export async function fetchCourseBySlug(slug: string): Promise<CatalogCourse | null> {
   // 1. Try Supabase if configured
@@ -78,15 +79,20 @@ export async function fetchCourseBySlug(slug: string): Promise<CatalogCourse | n
     }
   }
 
-  // 2. Check catalog.json
-  const catalogMatch = getCatalogCourse(slug);
-  if (catalogMatch) {
-    return catalogMatch;
+  // 2. If R2 is configured and active, check catalog.json
+  if (isR2Configured()) {
+    const catalogMatch = getCatalogCourse(slug);
+    if (catalogMatch) {
+      return catalogMatch;
+    }
   }
 
-  // 3. Fallback to canonical seed data
+  // 3. Fallback to canonical seed data (Google Drive + YouTube + Supabase)
   const canonical = CANONICAL_COURSES.find((c) => c.slug === slug);
-  if (!canonical) return null;
+  if (!canonical) {
+    const catalogMatch = getCatalogCourse(slug);
+    return catalogMatch || null;
+  }
 
   const track = CANONICAL_TRACKS.find((t) => t.id === canonical.track_id);
   const lessons = INITIAL_ATTACHED_LESSONS.filter((l) => l.course_id === canonical.id);
