@@ -1,23 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DriveFile } from '@/types';
+import { LessonItem } from '@/types';
+import { getMediaUrl } from '@/lib/r2';
 import {
-  FileText,
+  BookOpen,
   ZoomIn,
   ZoomOut,
-  RotateCw,
   Download,
   CheckCircle2,
   Maximize2,
-  BookOpen,
-  ArrowLeft,
-  ArrowRight,
-  ExternalLink
+  FileText
 } from 'lucide-react';
 
 interface PdfViewerProps {
-  file: DriveFile;
+  lesson: LessonItem;
   courseTitle: string;
   isCompleted: boolean;
   onToggleComplete: () => void;
@@ -25,7 +22,7 @@ interface PdfViewerProps {
 }
 
 export function PdfViewer({
-  file,
+  lesson,
   courseTitle,
   isCompleted,
   onToggleComplete,
@@ -34,16 +31,14 @@ export function PdfViewer({
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Direct content stream endpoint
-  const pdfStreamUrl = `/api/content/${file.id}`;
-  // Sandboxed preview for Google Drive PDF files
-  const driveEmbedUrl = `https://drive.google.com/file/d/${file.id}/preview`;
+  const mediaUrl = lesson.r2Key ? getMediaUrl(lesson.r2Key) : `/api/media/${encodeURI(lesson.name)}`;
+  const downloadUrl = lesson.r2Key
+    ? `/api/media/${encodeURI(lesson.r2Key)}?download=true`
+    : mediaUrl;
 
   const handleZoom = (delta: number) => {
     setZoomLevel((prev) => Math.min(Math.max(prev + delta, 50), 200));
   };
-
-  const resetZoom = () => setZoomLevel(100);
 
   return (
     <div className={`flex flex-col h-full bg-[#090D16] text-white ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
@@ -55,15 +50,15 @@ export function PdfViewer({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-gray-400">PDF Reader</span>
-              {file.formattedSize && (
+              <span className="text-[11px] font-mono uppercase tracking-wider text-gray-400">PDF Document</span>
+              {lesson.formattedSize && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-                  {file.formattedSize}
+                  {lesson.formattedSize}
                 </span>
               )}
             </div>
             <h1 className="text-sm md:text-base font-semibold text-gray-100 truncate mt-0.5">
-              {file.name}
+              {lesson.title || lesson.name}
             </h1>
           </div>
         </div>
@@ -90,7 +85,7 @@ export function PdfViewer({
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={resetZoom}
+              onClick={() => setZoomLevel(100)}
               className="px-1.5 py-0.5 text-[10px] text-gray-400 hover:text-white border-l border-gray-700 ml-1"
             >
               Reset
@@ -99,7 +94,7 @@ export function PdfViewer({
 
           {/* Download Button */}
           <a
-            href={`/api/download/${file.id}`}
+            href={downloadUrl}
             download
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-gray-800/80 text-gray-300 border border-gray-700 hover:border-gray-600 transition-colors"
             title="Download PDF"
@@ -130,17 +125,24 @@ export function PdfViewer({
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
         >
           <object
-            data={pdfStreamUrl}
+            data={mediaUrl}
             type="application/pdf"
             className="w-full h-full border-0"
           >
-            {/* Fallback to embedded sandboxed reader if native object plugin is disabled */}
-            <iframe
-              src={driveEmbedUrl}
-              sandbox="allow-scripts allow-same-origin"
-              className="w-full h-full border-0"
-              title={file.name}
-            />
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+              <FileText className="w-12 h-12 text-gray-600 mb-3" />
+              <p className="text-sm font-semibold text-gray-300">Native PDF Viewer Active</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                If your browser does not render inline PDFs, you can download or view it directly:
+              </p>
+              <a
+                href={downloadUrl}
+                download
+                className="mt-4 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
+              >
+                Download PDF ({lesson.formattedSize || 'Document'})
+              </a>
+            </div>
           </object>
         </div>
       </div>
@@ -148,15 +150,12 @@ export function PdfViewer({
       {/* PDF Footer Status Bar */}
       <div className="px-6 py-2.5 border-t border-[#1F2937] bg-[#0A0F1D] flex items-center justify-between text-xs text-gray-400 shrink-0">
         <div className="flex items-center gap-2 font-mono text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Native In-App PDF Engine</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span>Served from Owned Cloud Storage</span>
           <span className="text-gray-600">•</span>
           <span>Zero external redirects</span>
         </div>
-
-        <div className="flex items-center gap-4">
-          <span className="text-gray-500 text-[11px]">Tip: Use browser scroll or page up/down to navigate pages</span>
-        </div>
+        <span className="text-gray-500 text-[11px]">Use browser scroll or page up/down to navigate</span>
       </div>
     </div>
   );

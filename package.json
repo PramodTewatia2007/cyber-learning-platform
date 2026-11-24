@@ -6,9 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check-size": "node scripts/check-size.mjs",
+    "migrate": "node scripts/migrate-to-r2.mjs",
+    "import-yt-playlist": "node scripts/import-yt-playlist.mjs",
+    "sync-roadmap": "node scripts/sync-roadmap.mjs",
+    "build-catalog": "node scripts/build-catalog.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1176.0",
+    "@aws-sdk/lib-storage": "^3.1176.0",
+    "@aws-sdk/s3-request-presigner": "^3.1176.0",
+    "dotenv": "^18.0.10",
+    "googleapis": "^190.0.0",
     "lucide-react": "^1.78.0",
     "next": "16.4.6",
     "react": "19.3.0",

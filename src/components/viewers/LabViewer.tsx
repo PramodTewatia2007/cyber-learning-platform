@@ -1,23 +1,21 @@
 'use client';
 
 import React from 'react';
-import { DriveFile } from '@/types';
+import { LessonItem } from '@/types';
+import { getMediaUrl } from '@/lib/r2';
 import {
   Download,
   Terminal,
-  Shield,
   FileArchive,
   CheckCircle2,
   HardDrive,
   Cpu,
   KeyRound,
-  ExternalLink,
-  Copy,
   Info
 } from 'lucide-react';
 
 interface LabViewerProps {
-  file: DriveFile;
+  lesson: LessonItem;
   courseTitle: string;
   isCompleted: boolean;
   onToggleComplete: () => void;
@@ -25,14 +23,17 @@ interface LabViewerProps {
 }
 
 export function LabViewer({
-  file,
+  lesson,
   courseTitle,
   isCompleted,
   onToggleComplete,
   accentColor = '#10B981',
 }: LabViewerProps) {
-  const downloadUrl = `/api/download/${file.id}`;
-  const fileExt = file.name.split('.').pop()?.toUpperCase() || 'ZIP';
+  const downloadUrl = lesson.r2Key
+    ? `/api/media/${encodeURI(lesson.r2Key)}?download=true`
+    : `/api/media/${encodeURI(lesson.name)}?download=true`;
+
+  const fileExt = (lesson.name.split('.').pop() || 'ZIP').toUpperCase();
 
   return (
     <div className="flex flex-col h-full bg-[#090D16] text-white">
@@ -50,14 +51,14 @@ export function LabViewer({
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
                 .{fileExt}
               </span>
-              {file.formattedSize && (
+              {lesson.formattedSize && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-                  {file.formattedSize}
+                  {lesson.formattedSize}
                 </span>
               )}
             </div>
             <h1 className="text-sm md:text-base font-semibold text-gray-100 truncate mt-0.5">
-              {file.name}
+              {lesson.title || lesson.name}
             </h1>
           </div>
         </div>
@@ -80,7 +81,6 @@ export function LabViewer({
       {/* Main Lab Terminal Card */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-12 flex items-center justify-center">
         <div className="max-w-3xl w-full bg-[#0E1524] rounded-2xl border border-[#1F2937] p-6 md:p-8 shadow-2xl relative overflow-hidden">
-          {/* Subtle tactical glow background */}
           <div
             className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-10 pointer-events-none"
             style={{ backgroundColor: accentColor }}
@@ -89,16 +89,16 @@ export function LabViewer({
           {/* Asset Meta Banner */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#1F2937]">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-gray-900 border border-gray-700 flex items-center justify-center text-amber-400 shadow-inner">
+              <div className="w-14 h-14 rounded-xl bg-gray-900 border border-gray-700 flex items-center justify-center text-amber-400 shadow-inner shrink-0">
                 <FileArchive className="w-7 h-7" />
               </div>
               <div>
-                <span className="text-xs font-mono text-gray-400">PRACTICAL CHALLENGE FILE</span>
-                <h2 className="text-lg font-bold text-white mt-0.5">{file.name}</h2>
+                <span className="text-xs font-mono text-gray-400">HOSTED ON CLOUDFLARE R2</span>
+                <h2 className="text-lg font-bold text-white mt-0.5">{lesson.title || lesson.name}</h2>
                 <div className="flex items-center gap-3 text-xs text-gray-400 mt-1 font-mono">
-                  <span>Size: {file.formattedSize || 'Unknown'}</span>
+                  <span>Size: {lesson.formattedSize || 'Unknown'}</span>
                   <span>•</span>
-                  <span>Direct Site Download</span>
+                  <span>Direct Cloud Download</span>
                 </div>
               </div>
             </div>
@@ -107,7 +107,7 @@ export function LabViewer({
             <a
               href={downloadUrl}
               download
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-sm transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-95"
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-sm transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-95 shrink-0"
             >
               <Download className="w-4 h-4" />
               <span>Download Lab Asset</span>
@@ -155,23 +155,23 @@ export function LabViewer({
             {fileExt === 'OVA' ? (
               <div className="space-y-1.5 text-gray-400">
                 <p className="text-gray-500"># 1. Import Virtual Machine into VirtualBox</p>
-                <p className="text-emerald-400">VBoxManage import &quot;{file.name}&quot; --vsys 0 --vmname &quot;CyberLab-Target&quot;</p>
+                <p className="text-emerald-400">VBoxManage import &quot;{lesson.name}&quot; --vsys 0 --vmname &quot;CyberLab-Target&quot;</p>
                 <p className="text-gray-500 mt-2"># 2. Configure Host-Only Network Adapter</p>
                 <p className="text-emerald-400">VBoxManage modifyvm &quot;CyberLab-Target&quot; --nic1 hostonly --hostonlyadapter1 vboxnet0</p>
               </div>
             ) : fileExt === 'PCAP' || fileExt === 'PCAPNG' ? (
               <div className="space-y-1.5 text-gray-400">
                 <p className="text-gray-500"># 1. Read packet capture summary with tshark</p>
-                <p className="text-emerald-400">tshark -r &quot;{file.name}&quot; -q -z io,phs</p>
+                <p className="text-emerald-400">tshark -r &quot;{lesson.name}&quot; -q -z io,phs</p>
                 <p className="text-gray-500 mt-2"># 2. Filter for HTTP credentials or POST requests</p>
-                <p className="text-emerald-400">tshark -r &quot;{file.name}&quot; -Y &quot;http.request.method == POST&quot;</p>
+                <p className="text-emerald-400">tshark -r &quot;{lesson.name}&quot; -Y &quot;http.request.method == POST&quot;</p>
               </div>
             ) : (
               <div className="space-y-1.5 text-gray-400">
                 <p className="text-gray-500"># 1. Verify sha256 checksum after download</p>
-                <p className="text-emerald-400">sha256sum &quot;{file.name}&quot;</p>
+                <p className="text-emerald-400">sha256sum &quot;{lesson.name}&quot;</p>
                 <p className="text-gray-500 mt-2"># 2. Extract contents and run local compose</p>
-                <p className="text-emerald-400">unzip &quot;{file.name}&quot; &amp;&amp; cd lab &amp;&amp; docker compose up -d</p>
+                <p className="text-emerald-400">unzip &quot;{lesson.name}&quot; &amp;&amp; cd lab &amp;&amp; docker compose up -d</p>
               </div>
             )}
           </div>

@@ -1,0 +1,86 @@
+name: Cloud-to-Cloud Library Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      course:
+        description: 'Specific course slug to migrate (leave empty for ALL courses)'
+        required: false
+        default: ''
+        type: string
+      skip_videos:
+        description: 'Skip large video lectures (recommended for free tier, routes to YouTube mapping)'
+        required: true
+        default: true
+        type: boolean
+      video_max_mb:
+        description: 'Maximum video size in MB to migrate into R2 (0 = skip all videos)'
+        required: false
+        default: '0'
+        type: string
+
+jobs:
+  migrate:
+    name: Stream Google Drive to Cloudflare R2
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # 6 hours max for large libraries
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Storage Audit (Dry-Run)
+        env:
+          GOOGLE_DRIVE_API_KEY: ${{ secrets.GOOGLE_DRIVE_API_KEY }}
+        run: node scripts/check-size.mjs
+
+      - name: Execute Cloud-to-Cloud Migration
+        env:
+          GOOGLE_DRIVE_API_KEY: ${{ secrets.GOOGLE_DRIVE_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'cyber-lms-library' }}
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.skip_videos }}" = "true" ]; then
+            FLAGS="$FLAGS --skip-videos"
+          elif [ "${{ inputs.video_max_mb }}" != "0" ]; then
+            FLAGS="$FLAGS --video-max-mb=${{ inputs.video_max_mb }}"
+          fi
+          if [ -n "${{ inputs.course }}" ]; then
+            FLAGS="$FLAGS --course=${{ inputs.course }}"
+          fi
+          echo "Executing: node scripts/migrate-to-r2.mjs $FLAGS"
+          node scripts/migrate-to-r2.mjs $FLAGS
+
+      - name: Sync Red Team Roadmap & Backup
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'cyber-lms-library' }}
+        run: node scripts/sync-roadmap.mjs
+
+      - name: Rebuild Unified Catalog Manifest
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'cyber-lms-library' }}
+        run: node scripts/build-catalog.mjs
+
+      - name: Commit & Push Updated Manifest and YouTube Mappings
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update catalog manifest & youtube mappings [skip ci]"
+          file_pattern: "src/data/catalog.json src/config/youtube-videos.json content/red-team-roadmap.md"

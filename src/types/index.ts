@@ -11,28 +11,32 @@ export type FileType =
   | 'image'
   | 'unknown';
 
-export interface DriveFile {
+export type StorageSource = 'r2' | 'youtube' | 'local_markdown';
+
+export interface LessonItem {
   id: string;
   name: string;
-  mimeType: string;
+  title: string;
+  fileType: FileType;
+  source: StorageSource;
+  r2Key?: string;
+  youtubeId?: string;
+  youtubeThumbnail?: string;
   size?: number;
   formattedSize?: string;
-  modifiedTime?: string;
-  fileType: FileType;
-  webViewLink?: string;
-  iconLink?: string;
-  description?: string;
   duration?: string;
-  sampleContent?: string;
+  modifiedTime?: string;
+  description?: string;
+  isPendingUpload?: boolean; // Skipped video waiting for YouTube ID
+  order?: number;
 }
 
 export interface CourseModule {
   id: string;
   name: string;
   order?: number;
-  files: DriveFile[];
+  lessons: LessonItem[];
   submodules?: CourseModule[];
-  folderId?: string;
 }
 
 export interface CourseStats {
@@ -40,34 +44,28 @@ export interface CourseStats {
   pdfs: number;
   labs: number;
   docs: number;
-  others: number;
+  totalSize: number;
+  formattedTotalSize: string;
 }
 
-export interface CourseTree {
-  courseSlug: string;
-  courseTitle: string;
-  rootFolderId?: string;
-  isExternalMarkdown?: boolean;
-  markdownSourceUrl?: string;
-  modules: CourseModule[];
-  rootFiles: DriveFile[];
-  totalFiles: number;
-  stats: CourseStats;
-  lastSynced?: string;
-  isMock?: boolean;
-}
-
-export interface CourseSource {
+export interface CatalogCourse {
   slug: string;
   title: string;
   trackId: string;
-  folderId?: string;
-  sourceType: 'drive_folder' | 'github_markdown';
-  githubRawUrl?: string;
+  trackTitle: string;
+  trackAccent: string;
   description: string;
   accentColor: string;
   recommendedStep?: number;
   tags: string[];
+  driveFolderId?: string;
+  r2Prefix?: string;
+  isRoadmap?: boolean;
+  modules: CourseModule[];
+  rootLessons: LessonItem[];
+  stats: CourseStats;
+  totalLessons: number;
+  pendingVideoCount?: number;
 }
 
 export interface TrackConfig {
@@ -78,7 +76,35 @@ export interface TrackConfig {
   accentBg: string;
   borderAccent: string;
   icon: string;
-  courses: CourseSource[];
+  courses: CatalogCourse[];
+}
+
+export interface CatalogManifest {
+  version: string;
+  generatedAt: string;
+  totalTracks: number;
+  totalCourses: number;
+  totalLessons: number;
+  totalVideos: number;
+  totalPdfs: number;
+  totalLabs: number;
+  totalDocs: number;
+  totalSizeBytes: number;
+  formattedTotalSize: string;
+  tracks: TrackConfig[];
+  courses: Record<string, CatalogCourse>;
+}
+
+export interface YouTubeVideoEntry {
+  courseSlug: string;
+  modulePath: string;
+  title: string;
+  originalFilename: string;
+  originalSizeMB: number;
+  youtubeId: string;
+  duration?: string;
+  thumbnailUrl?: string;
+  addedAt?: string;
 }
 
 export interface SearchResultItem {
@@ -86,23 +112,13 @@ export interface SearchResultItem {
   title: string;
   type: 'course' | 'module' | 'lesson';
   fileType?: FileType;
+  source?: StorageSource;
   courseSlug: string;
   courseTitle: string;
   trackTitle: string;
   accent: string;
-  moduleId?: string;
   moduleName?: string;
   snippet?: string;
-}
-
-export interface UserProgress {
-  completedLessons: string[]; // array of file IDs
-  lessonNotes: Record<string, string>; // fileId -> notes markdown
-  lastAccessedLesson?: {
-    courseSlug: string;
-    fileId: string;
-    lessonTitle: string;
-    timestamp: number;
-  };
-  roadmapCompletedCheckboxes: string[]; // array of checkbox IDs/hashes
+  youtubeId?: string;
+  r2Key?: string;
 }

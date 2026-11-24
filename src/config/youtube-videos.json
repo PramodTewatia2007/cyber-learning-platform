@@ -1,0 +1,41 @@
+[
+  {
+    "courseSlug": "ethical-hacking-scratch",
+    "modulePath": "Module 01: Information Gathering & Reconnaissance",
+    "title": "1.1 Passive Reconnaissance: OSINT, Shodan, and Subfinder",
+    "originalFilename": "1.1-Passive-Reconnaissance-OSINT-Shodan-Subfinder.mp4",
+    "originalSizeMB": 240,
+    "youtubeId": "3Kq1MIfTWCE",
+    "duration": "38:40",
+    "thumbnailUrl": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "courseSlug": "ethical-hacking-scratch",
+    "modulePath": "Module 01: Information Gathering & Reconnaissance",
+    "title": "1.2 Active Reconnaissance: Nmap Scripting Engine (NSE) Mastery",
+    "originalFilename": "1.2-Active-Reconnaissance-Nmap-Scripting-Engine.mp4",
+    "originalSizeMB": 290,
+    "youtubeId": "4t4kBkMsDbQ",
+    "duration": "44:15",
+    "thumbnailUrl": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "courseSlug": "ceh-video-lectures",
+    "modulePath": "Section 1: Scanning & Enumeration",
+    "title": "01 - Scanning Networks: Three-Way Handshake & FIN Scans",
+    "originalFilename": "01-Scanning-Networks-Three-Way-Handshake.mp4",
+    "originalSizeMB": 215,
+    "youtubeId": "WnNCNUjhqxE",
+    "duration": "32:10",
+    "thumbnailUrl": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "courseSlug": "ceh-video-lectures",
+    "modulePath": "Section 1: Scanning & Enumeration",
+    "title": "02 - NetBIOS, SNMP, and LDAP Enumeration Tools",
+    "originalFilename": "02-NetBIOS-SNMP-and-LDAP-Enumeration.mp4",
+    "originalSizeMB": 198,
+    "youtubeId": "",
+    "duration": "29:45"
+  }
+]

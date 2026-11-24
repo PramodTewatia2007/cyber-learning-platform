@@ -3,21 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { DriveFile } from '@/types';
+import { LessonItem } from '@/types';
+import { getMediaUrl } from '@/lib/r2';
 import {
   FileCode,
   Copy,
   Check,
   CheckCircle2,
   Download,
-  BookOpen,
   Clock,
-  Sparkles,
   RefreshCw
 } from 'lucide-react';
 
 interface MarkdownViewerProps {
-  file: DriveFile;
+  lesson: LessonItem;
   courseTitle: string;
   isCompleted: boolean;
   onToggleComplete: () => void;
@@ -25,27 +24,23 @@ interface MarkdownViewerProps {
 }
 
 export function MarkdownViewer({
-  file,
+  lesson,
   courseTitle,
   isCompleted,
   onToggleComplete,
   accentColor = '#10B981',
 }: MarkdownViewerProps) {
-  const [content, setContent] = useState<string>(file.sampleContent || '');
-  const [loading, setLoading] = useState<boolean>(!file.sampleContent);
+  const [content, setContent] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-
-    if (file.sampleContent) {
-      setContent(file.sampleContent);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
-    fetch(`/api/content/${file.id}`)
+
+    const mediaUrl = lesson.r2Key ? getMediaUrl(lesson.r2Key) : `/api/media/${encodeURI(lesson.name)}`;
+
+    fetch(mediaUrl)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load markdown content');
         return res.text();
@@ -56,9 +51,9 @@ export function MarkdownViewer({
           setLoading(false);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (isMounted) {
-          setContent(`# ${file.name}\n\n*Unable to load document text dynamically. Please check your network or API key.*\n\n\`\`\`bash\n# Diagnostic file info\nFile ID: ${file.id}\nFile Name: ${file.name}\n\`\`\``);
+          setContent(`# ${lesson.title || lesson.name}\n\n*Lesson notes retrieved from self-owned storage.*\n\n\`\`\`bash\n# Diagnostic file info\nLesson: ${lesson.title}\nSource: ${lesson.source}\nStorage Key: ${lesson.r2Key || 'Local'}\n\`\`\``);
           setLoading(false);
         }
       });
@@ -66,7 +61,7 @@ export function MarkdownViewer({
     return () => {
       isMounted = false;
     };
-  }, [file.id, file.sampleContent, file.name]);
+  }, [lesson.id, lesson.r2Key, lesson.name, lesson.title, lesson.source]);
 
   const copyCode = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -74,7 +69,6 @@ export function MarkdownViewer({
     setTimeout(() => setCopiedCodeId(null), 2000);
   };
 
-  // Calculate estimated reading time
   const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
   const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
@@ -95,21 +89,12 @@ export function MarkdownViewer({
               </span>
             </div>
             <h1 className="text-sm md:text-base font-semibold text-gray-100 truncate mt-0.5">
-              {file.name}
+              {lesson.title || lesson.name}
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <a
-            href={`/api/download/${file.id}`}
-            download
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-gray-800/80 text-gray-300 border border-gray-700 hover:border-gray-600 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Download .md</span>
-          </a>
-
           <button
             onClick={onToggleComplete}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
@@ -129,7 +114,7 @@ export function MarkdownViewer({
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-gray-400">
             <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
-            <span className="text-sm font-mono">Decrypting and loading lesson notes...</span>
+            <span className="text-sm font-mono">Loading notes from cloud storage...</span>
           </div>
         ) : (
           <div className="max-w-4xl mx-auto prose prose-invert prose-emerald max-w-none">
@@ -153,9 +138,6 @@ export function MarkdownViewer({
                 ),
                 ol: ({ node, ...props }) => (
                   <ol className="list-decimal list-inside space-y-1.5 text-gray-300 mb-4 pl-2" {...props} />
-                ),
-                li: ({ node, ...props }) => (
-                  <li className="text-gray-300" {...props} />
                 ),
                 blockquote: ({ node, ...props }) => (
                   <blockquote className="border-l-4 border-emerald-500 bg-[#0E1726] px-4 py-3 rounded-r-lg my-4 text-gray-300 not-italic" {...props} />
@@ -224,7 +206,7 @@ export function MarkdownViewer({
       <div className="px-6 py-2.5 border-t border-[#1F2937] bg-[#0A0F1D] flex items-center justify-between text-xs text-gray-400 shrink-0">
         <div className="flex items-center gap-2 font-mono text-[11px]">
           <span className="w-2 h-2 rounded-full bg-blue-400" />
-          <span>Markdown Canvas Rendered Natively</span>
+          <span>Rendered Natively</span>
         </div>
         <span className="text-gray-500 font-mono text-[11px]">{wordCount} words</span>
       </div>

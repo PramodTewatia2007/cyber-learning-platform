@@ -2,32 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CourseSource, CourseStats } from '@/types';
+import { CatalogCourse } from '@/types';
 import {
   Film,
   BookOpen,
   FileArchive,
   FileCode,
   ArrowRight,
-  ExternalLink,
   CheckCircle2,
-  Lock,
-  Layers
+  HardDrive
 } from 'lucide-react';
 
 interface CourseCardProps {
-  course: CourseSource;
-  stats?: CourseStats;
-  totalFiles?: number;
+  course: CatalogCourse;
   trackAccent: string;
 }
 
-export function CourseCard({ course, stats, totalFiles = 0, trackAccent }: CourseCardProps) {
+export function CourseCard({ course, trackAccent }: CourseCardProps) {
   const [completedCount, setCompletedCount] = useState(0);
 
   useEffect(() => {
     try {
-      if (course.slug === 'red-team-roadmap') {
+      if (course.isRoadmap) {
         const savedRoadmap = localStorage.getItem('cyber_lms_roadmap_completed_items');
         if (savedRoadmap) {
           const items = JSON.parse(savedRoadmap);
@@ -41,15 +37,13 @@ export function CourseCard({ course, stats, totalFiles = 0, trackAccent }: Cours
         }
       }
     } catch (e) {
-      // Ignore localStorage parse errors
+      // ignore
     }
-  }, [course.slug]);
+  }, [course.slug, course.isRoadmap]);
 
-  const targetUrl = course.slug === 'red-team-roadmap' ? '/roadmap' : `/course/${course.slug}`;
-
-  const completionPercent = totalFiles > 0
-    ? Math.min(100, Math.round((completedCount / totalFiles) * 100))
-    : 0;
+  const targetUrl = course.isRoadmap ? '/roadmap' : `/course/${course.slug}`;
+  const total = course.totalLessons || 1;
+  const completionPercent = Math.min(100, Math.round((completedCount / total) * 100));
 
   return (
     <div className="bg-[#111827] rounded-2xl border border-[#1F2937] p-5 flex flex-col justify-between hover:border-gray-700 transition-all duration-200 group relative overflow-hidden shadow-lg hover:shadow-2xl">
@@ -72,7 +66,7 @@ export function CourseCard({ course, stats, totalFiles = 0, trackAccent }: Cours
               </span>
             )}
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-              {course.sourceType === 'github_markdown' ? 'GitHub Markdown' : 'Drive Synced'}
+              {course.isRoadmap ? 'Roadmap Snapshot' : 'R2 + YouTube'}
             </span>
           </div>
 
@@ -109,37 +103,36 @@ export function CourseCard({ course, stats, totalFiles = 0, trackAccent }: Cours
 
       {/* Bottom Section: Live counts & Enter button */}
       <div className="pt-3 border-t border-[#1F2937]/80">
-        {/* Live File Counts */}
         <div className="flex items-center gap-3 text-[11px] font-mono text-gray-400 mb-3.5 flex-wrap">
-          {stats ? (
-            <>
-              {stats.videos > 0 && (
-                <span className="flex items-center gap-1 text-red-400/90">
-                  <Film className="w-3 h-3" />
-                  <span>{stats.videos} Videos</span>
-                </span>
-              )}
-              {stats.pdfs > 0 && (
-                <span className="flex items-center gap-1 text-emerald-400/90">
-                  <BookOpen className="w-3 h-3" />
-                  <span>{stats.pdfs} PDFs</span>
-                </span>
-              )}
-              {stats.labs > 0 && (
-                <span className="flex items-center gap-1 text-amber-400/90">
-                  <FileArchive className="w-3 h-3" />
-                  <span>{stats.labs} Labs</span>
-                </span>
-              )}
-              {stats.docs > 0 && (
-                <span className="flex items-center gap-1 text-cyan-400/90">
-                  <FileCode className="w-3 h-3" />
-                  <span>{stats.docs} Notes</span>
-                </span>
-              )}
-            </>
-          ) : (
-            <span>{totalFiles} Lesson Assets</span>
+          {course.stats.videos > 0 && (
+            <span className="flex items-center gap-1 text-red-400/90">
+              <Film className="w-3 h-3" />
+              <span>{course.stats.videos} Videos</span>
+            </span>
+          )}
+          {course.stats.pdfs > 0 && (
+            <span className="flex items-center gap-1 text-emerald-400/90">
+              <BookOpen className="w-3 h-3" />
+              <span>{course.stats.pdfs} PDFs</span>
+            </span>
+          )}
+          {course.stats.labs > 0 && (
+            <span className="flex items-center gap-1 text-amber-400/90">
+              <FileArchive className="w-3 h-3" />
+              <span>{course.stats.labs} Labs</span>
+            </span>
+          )}
+          {course.stats.docs > 0 && (
+            <span className="flex items-center gap-1 text-cyan-400/90">
+              <FileCode className="w-3 h-3" />
+              <span>{course.stats.docs} Notes</span>
+            </span>
+          )}
+          {course.stats.formattedTotalSize && course.stats.formattedTotalSize !== '0 B' && (
+            <span className="flex items-center gap-1 text-gray-400 ml-auto">
+              <HardDrive className="w-3 h-3 text-gray-500" />
+              <span>{course.stats.formattedTotalSize}</span>
+            </span>
           )}
         </div>
 
@@ -148,7 +141,7 @@ export function CourseCard({ course, stats, totalFiles = 0, trackAccent }: Cours
           href={targetUrl}
           className="w-full flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold bg-[#1F2937] hover:bg-gray-700 text-gray-100 group/btn transition-colors border border-gray-700/60"
         >
-          <span>{course.slug === 'red-team-roadmap' ? 'Open Roadmap' : 'Launch Workspace'}</span>
+          <span>{course.isRoadmap ? 'Open Roadmap' : 'Launch Workspace'}</span>
           <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover/btn:translate-x-1 group-hover/btn:text-white transition-all" />
         </Link>
       </div>

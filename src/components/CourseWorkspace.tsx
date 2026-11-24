@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { CourseTree, CourseModule, DriveFile, CourseSource, TrackConfig } from '@/types';
-import { VideoViewer } from './viewers/VideoViewer';
+import { CatalogCourse, CourseModule, LessonItem } from '@/types';
+import { VideoPlayer } from './VideoPlayer';
 import { PdfViewer } from './viewers/PdfViewer';
 import { MarkdownViewer } from './viewers/MarkdownViewer';
 import { LabViewer } from './viewers/LabViewer';
-import { DocViewer } from './viewers/DocViewer';
 import { LessonNotes } from './LessonNotes';
 import {
   ChevronLeft,
@@ -15,58 +14,57 @@ import {
   Folder,
   FolderOpen,
   Film,
-  FileText,
+  BookOpen,
   FileArchive,
   FileCode,
+  FileText,
   CheckCircle2,
   Circle,
   Search,
-  BookOpen,
   ArrowLeft,
   Menu,
   X,
-  Shield,
+  AlertCircle,
   Layers,
-  Sparkles
+  Cloud
 } from 'lucide-react';
+import { Youtube } from './YoutubeIcon';
 
 interface CourseWorkspaceProps {
-  course: CourseSource;
-  track?: TrackConfig;
-  initialTree: CourseTree;
+  course: CatalogCourse;
 }
 
-export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceProps) {
-  const [tree, setTree] = useState<CourseTree>(initialTree);
-  const [activeFile, setActiveFile] = useState<DriveFile | null>(null);
+export function CourseWorkspace({ course }: CourseWorkspaceProps) {
+  const [activeLesson, setActiveLesson] = useState<LessonItem | null>(null);
   const [activeModuleName, setActiveModuleName] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [searchFilter, setSearchFilter] = useState('');
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [showUnmappedDrawer, setShowUnmappedDrawer] = useState(false);
 
-  const accentColor = course.accentColor || track?.accent || '#10B981';
+  const accentColor = course.accentColor || course.trackAccent || '#10B981';
 
-  // Flat list of all lessons in order for Next/Previous buttons
+  // Flattened ordered lessons for Previous / Next buttons
   const flattenedLessons = useMemo(() => {
-    const list: { file: DriveFile; moduleName: string }[] = [];
+    const list: { lesson: LessonItem; moduleName: string }[] = [];
 
-    tree.rootFiles.forEach((file) => {
-      list.push({ file, moduleName: 'Overview' });
+    course.rootLessons.forEach((lesson) => {
+      list.push({ lesson, moduleName: 'Overview' });
     });
 
     const traverse = (mod: CourseModule) => {
-      mod.files.forEach((file) => {
-        list.push({ file, moduleName: mod.name });
+      mod.lessons.forEach((lesson) => {
+        list.push({ lesson, moduleName: mod.name });
       });
       if (mod.submodules) {
         mod.submodules.forEach(traverse);
       }
     };
 
-    tree.modules.forEach(traverse);
+    course.modules.forEach(traverse);
     return list;
-  }, [tree]);
+  }, [course]);
 
   // Load completed lessons from localStorage
   useEffect(() => {
@@ -76,24 +74,23 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
         setCompletedLessons(new Set(JSON.parse(saved)));
       }
     } catch (e) {
-      console.warn('Could not read saved progress:', e);
+      // ignore
     }
   }, [course.slug]);
 
-  // Set default active file on load
+  // Set initial active lesson and open modules
   useEffect(() => {
-    if (!activeFile && flattenedLessons.length > 0) {
-      setActiveFile(flattenedLessons[0].file);
+    if (!activeLesson && flattenedLessons.length > 0) {
+      setActiveLesson(flattenedLessons[0].lesson);
       setActiveModuleName(flattenedLessons[0].moduleName);
     }
 
-    // Open first few modules by default
     const initialOpen: Record<string, boolean> = {};
-    tree.modules.forEach((mod, idx) => {
+    course.modules.forEach((mod, idx) => {
       if (idx < 3) initialOpen[mod.id] = true;
     });
     setOpenModules(initialOpen);
-  }, [flattenedLessons, tree.modules, activeFile]);
+  }, [course, flattenedLessons, activeLesson]);
 
   const toggleModule = (modId: string) => {
     setOpenModules((prev) => ({
@@ -102,30 +99,28 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
     }));
   };
 
-  const toggleComplete = (fileId: string) => {
+  const toggleComplete = (lessonId: string) => {
     setCompletedLessons((prev) => {
       const next = new Set(prev);
-      if (next.has(fileId)) {
-        next.delete(fileId);
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
       } else {
-        next.add(fileId);
+        next.add(lessonId);
       }
       localStorage.setItem(`cyber_lms_completed_${course.slug}`, JSON.stringify(Array.from(next)));
       return next;
     });
   };
 
-  const selectLesson = (file: DriveFile, modName: string) => {
-    setActiveFile(file);
+  const selectLesson = (lesson: LessonItem, modName: string) => {
+    setActiveLesson(lesson);
     setActiveModuleName(modName);
-    // On mobile, collapse sidebar when selecting a lesson
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   };
 
-  // Find index of current lesson in flattened list
-  const currentIndex = flattenedLessons.findIndex((item) => item.file.id === activeFile?.id);
+  const currentIndex = flattenedLessons.findIndex((item) => item.lesson.id === activeLesson?.id);
   const prevLesson = currentIndex > 0 ? flattenedLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex >= 0 && currentIndex < flattenedLessons.length - 1 ? flattenedLessons[currentIndex + 1] : null;
 
@@ -133,9 +128,11 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
     ? Math.round((completedLessons.size / flattenedLessons.length) * 100)
     : 0;
 
-  // File type icon helper
-  const getFileIcon = (fileType: string) => {
-    switch (fileType) {
+  const getLessonIcon = (lesson: LessonItem) => {
+    if (lesson.source === 'youtube') {
+      return <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />;
+    }
+    switch (lesson.fileType) {
       case 'video':
         return <Film className="w-3.5 h-3.5 text-red-400 shrink-0" />;
       case 'pdf':
@@ -182,13 +179,16 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
               style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}40` }}
               className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border"
             >
-              {track?.title || 'Track'}
+              {course.trackTitle}
             </span>
-            {tree.isMock && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-                Demo Catalog
-              </span>
-            )}
+            {course.pendingVideoCount && course.pendingVideoCount > 0 ? (
+              <button
+                onClick={() => setShowUnmappedDrawer(true)}
+                className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 hover:bg-amber-900/60 transition-colors"
+              >
+                {course.pendingVideoCount} Unmapped
+              </button>
+            ) : null}
           </div>
 
           <h2 className="text-sm font-bold text-gray-100 line-clamp-2 mt-1">
@@ -226,23 +226,23 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
 
         {/* Module & Lesson Accordion Tree */}
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
-          {/* Root Overview Lessons */}
-          {tree.rootFiles.length > 0 && (
+          {/* Root Lessons */}
+          {course.rootLessons.length > 0 && (
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-gray-500 px-2 py-1 block">
                 Overview & Orientation
               </span>
               <div className="space-y-1 mt-1">
-                {tree.rootFiles
-                  .filter((f) => !searchFilter || f.name.toLowerCase().includes(searchFilter.toLowerCase()))
-                  .map((file) => {
-                    const isActive = activeFile?.id === file.id;
-                    const isDone = completedLessons.has(file.id);
+                {course.rootLessons
+                  .filter((l) => !searchFilter || l.title.toLowerCase().includes(searchFilter.toLowerCase()))
+                  .map((lesson) => {
+                    const isActive = activeLesson?.id === lesson.id;
+                    const isDone = completedLessons.has(lesson.id);
 
                     return (
                       <button
-                        key={file.id}
-                        onClick={() => selectLesson(file, 'Overview')}
+                        key={lesson.id}
+                        onClick={() => selectLesson(lesson, 'Overview')}
                         className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all flex items-center justify-between group ${
                           isActive
                             ? 'bg-emerald-500/15 border border-emerald-500/30 text-white font-medium'
@@ -250,8 +250,8 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {getFileIcon(file.fileType)}
-                          <span className="truncate">{file.name}</span>
+                          {getLessonIcon(lesson)}
+                          <span className="truncate">{lesson.title}</span>
                         </div>
                         <div className="shrink-0 ml-2">
                           {isDone ? (
@@ -267,16 +267,15 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
             </div>
           )}
 
-          {/* Course Modules */}
-          {tree.modules.map((mod) => {
+          {/* Modules */}
+          {course.modules.map((mod) => {
             const isOpen = openModules[mod.id] ?? true;
-            const filteredFiles = mod.files.filter(
-              (f) => !searchFilter || f.name.toLowerCase().includes(searchFilter.toLowerCase())
+            const filteredLessons = mod.lessons.filter(
+              (l) => !searchFilter || l.title.toLowerCase().includes(searchFilter.toLowerCase())
             );
 
             return (
               <div key={mod.id} className="rounded-xl border border-gray-800/80 bg-[#070B14] overflow-hidden">
-                {/* Module Header Button */}
                 <button
                   onClick={() => toggleModule(mod.id)}
                   className="w-full px-3 py-2.5 flex items-center justify-between text-left text-xs font-medium text-gray-300 hover:text-white bg-[#0E1524]/60 hover:bg-[#0E1524] transition-colors"
@@ -290,21 +289,20 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
                     <span className="truncate font-semibold text-gray-200">{mod.name}</span>
                   </div>
                   <span className="text-[10px] font-mono text-gray-500 shrink-0 ml-2">
-                    {mod.files.length} items
+                    {mod.lessons.length}
                   </span>
                 </button>
 
-                {/* Module Files List */}
                 {isOpen && (
                   <div className="p-1 space-y-0.5">
-                    {filteredFiles.map((file) => {
-                      const isActive = activeFile?.id === file.id;
-                      const isDone = completedLessons.has(file.id);
+                    {filteredLessons.map((lesson) => {
+                      const isActive = activeLesson?.id === lesson.id;
+                      const isDone = completedLessons.has(lesson.id);
 
                       return (
                         <button
-                          key={file.id}
-                          onClick={() => selectLesson(file, mod.name)}
+                          key={lesson.id}
+                          onClick={() => selectLesson(lesson, mod.name)}
                           className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all flex items-center justify-between group ${
                             isActive
                               ? 'bg-emerald-500/15 border border-emerald-500/30 text-white font-medium'
@@ -312,8 +310,8 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {getFileIcon(file.fileType)}
-                            <span className="truncate">{file.name}</span>
+                            {getLessonIcon(lesson)}
+                            <span className="truncate">{lesson.title}</span>
                           </div>
                           <div className="shrink-0 ml-2">
                             {isDone ? (
@@ -335,10 +333,9 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
 
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col h-full bg-[#090D16]">
-        {/* Top Operational Navigation Bar */}
+        {/* Top Header */}
         <header className="h-14 border-b border-[#1F2937] bg-[#0A0F1D] flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Sidebar toggle button */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
@@ -347,9 +344,8 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
               <Menu className="w-4 h-4" />
             </button>
 
-            {/* Breadcrumb */}
             <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-gray-400 truncate">
-              <span className="text-gray-500">{track?.title || 'Track'}</span>
+              <span className="text-gray-500">{course.trackTitle}</span>
               <span>/</span>
               <span className="text-gray-300 truncate">{course.title}</span>
               {activeModuleName && (
@@ -361,14 +357,13 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
             </div>
           </div>
 
-          {/* Previous / Next Lesson Navigation Buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => prevLesson && selectLesson(prevLesson.file, prevLesson.moduleName)}
+              onClick={() => prevLesson && selectLesson(prevLesson.lesson, prevLesson.moduleName)}
               disabled={!prevLesson}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 prevLesson
-                  ? 'bg-gray-800/80 border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700'
+                  ? 'bg-gray-800/80 border-gray-700 text-gray-300 hover:text-white'
                   : 'border-gray-800/40 text-gray-600 cursor-not-allowed'
               }`}
             >
@@ -377,7 +372,7 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
             </button>
 
             <button
-              onClick={() => nextLesson && selectLesson(nextLesson.file, nextLesson.moduleName)}
+              onClick={() => nextLesson && selectLesson(nextLesson.lesson, nextLesson.moduleName)}
               disabled={!nextLesson}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 nextLesson
@@ -391,72 +386,89 @@ export function CourseWorkspace({ course, track, initialTree }: CourseWorkspaceP
           </div>
         </header>
 
-        {/* Dynamic Viewer based on active file type */}
+        {/* Dynamic Viewer */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {activeFile ? (
+          {activeLesson ? (
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 overflow-hidden">
-                {activeFile.fileType === 'video' && (
-                  <VideoViewer
-                    file={activeFile}
+                {activeLesson.fileType === 'video' ? (
+                  <VideoPlayer
+                    lesson={activeLesson}
                     courseTitle={course.title}
-                    isCompleted={completedLessons.has(activeFile.id)}
-                    onToggleComplete={() => toggleComplete(activeFile.id)}
+                    isCompleted={completedLessons.has(activeLesson.id)}
+                    onToggleComplete={() => toggleComplete(activeLesson.id)}
+                    onNextLesson={() => nextLesson && selectLesson(nextLesson.lesson, nextLesson.moduleName)}
                     accentColor={accentColor}
                   />
-                )}
-                {activeFile.fileType === 'pdf' && (
+                ) : activeLesson.fileType === 'pdf' ? (
                   <PdfViewer
-                    file={activeFile}
+                    lesson={activeLesson}
                     courseTitle={course.title}
-                    isCompleted={completedLessons.has(activeFile.id)}
-                    onToggleComplete={() => toggleComplete(activeFile.id)}
+                    isCompleted={completedLessons.has(activeLesson.id)}
+                    onToggleComplete={() => toggleComplete(activeLesson.id)}
                     accentColor={accentColor}
                   />
-                )}
-                {activeFile.fileType === 'markdown' && (
+                ) : activeLesson.fileType === 'markdown' ? (
                   <MarkdownViewer
-                    file={activeFile}
+                    lesson={activeLesson}
                     courseTitle={course.title}
-                    isCompleted={completedLessons.has(activeFile.id)}
-                    onToggleComplete={() => toggleComplete(activeFile.id)}
+                    isCompleted={completedLessons.has(activeLesson.id)}
+                    onToggleComplete={() => toggleComplete(activeLesson.id)}
                     accentColor={accentColor}
                   />
-                )}
-                {activeFile.fileType === 'lab' && (
+                ) : (
                   <LabViewer
-                    file={activeFile}
+                    lesson={activeLesson}
                     courseTitle={course.title}
-                    isCompleted={completedLessons.has(activeFile.id)}
-                    onToggleComplete={() => toggleComplete(activeFile.id)}
-                    accentColor={accentColor}
-                  />
-                )}
-                {['document', 'presentation', 'spreadsheet', 'unknown'].includes(activeFile.fileType) && (
-                  <DocViewer
-                    file={activeFile}
-                    courseTitle={course.title}
-                    isCompleted={completedLessons.has(activeFile.id)}
-                    onToggleComplete={() => toggleComplete(activeFile.id)}
+                    isCompleted={completedLessons.has(activeLesson.id)}
+                    onToggleComplete={() => toggleComplete(activeLesson.id)}
                     accentColor={accentColor}
                   />
                 )}
               </div>
 
-              {/* Study Notes Scratchpad */}
-              <LessonNotes fileId={activeFile.id} lessonName={activeFile.name} />
+              {/* Personal Notes */}
+              <LessonNotes fileId={activeLesson.id} lessonName={activeLesson.title} />
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
               <BookOpen className="w-12 h-12 mb-3 text-gray-600" />
-              <h3 className="text-base font-semibold text-gray-400">Select a lesson from the sidebar</h3>
-              <p className="text-xs text-gray-500 mt-1 max-w-sm">
-                Browse through the course modules on the left to start streaming videos, reading PDFs, or downloading lab environments.
-              </p>
+              <h3 className="text-base font-semibold text-gray-400">Select a lesson to begin</h3>
             </div>
           )}
         </div>
       </div>
+
+      {/* Unmapped Videos Drawer (Dev Mode Tool) */}
+      {showUnmappedDrawer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0E1524] border border-[#1F2937] rounded-2xl max-w-lg w-full p-6 text-white shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <Youtube className="w-5 h-5 text-red-500" />
+                <h3 className="text-sm font-bold">Unmapped Videos ({course.pendingVideoCount || 0})</h3>
+              </div>
+              <button onClick={() => setShowUnmappedDrawer(false)} className="text-gray-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              These video lectures were skipped during R2 migration. Add their Unlisted YouTube IDs to <code className="text-emerald-400">src/config/youtube-videos.json</code> or run:
+            </p>
+            <div className="mt-3 p-3 bg-black/60 rounded-lg border border-gray-800 font-mono text-xs text-gray-300">
+              npm run import-yt-playlist -- --playlist=ID --course={course.slug}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowUnmappedDrawer(false)}
+                className="px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
