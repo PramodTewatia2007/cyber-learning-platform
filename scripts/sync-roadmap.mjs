@@ -1,7 +1,6 @@
 /**
- * Red Team Roadmap Snapshot & Backup CLI Script
+ * Red Team Roadmap Snapshot Script
  * Downloads the latest upstream roadmap markdown from GitHub and saves to content/red-team-roadmap.md
- * Optionally backs up to Cloudflare R2 at roadmaps/red-team-roadmap.md
  *
  * Usage:
  *   node scripts/sync-roadmap.mjs
@@ -11,21 +10,15 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/soheilsec/Red-Team-Roadmap/main/English.md';
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'cyber-lms-library';
-
 async function main() {
   console.log('\n=============================================================================');
-  console.log('   CYBERSECURITY LMS // RED TEAM ROADMAP SNAPSHOT & BACKUP');
+  console.log('   CYBERSECURITY LMS // RED TEAM ROADMAP SNAPSHOT');
   console.log('=============================================================================\n');
 
   const contentDir = path.join(__dirname, '..', 'content');
@@ -50,7 +43,6 @@ async function main() {
   }
 
   if (!markdown || markdown.trim() === '') {
-    // Check fallback in src/data or content
     const fallbackSrc = path.join(__dirname, '..', 'src', 'data', 'red-team-roadmap-fallback.md');
     if (fs.existsSync(fallbackSrc)) {
       markdown = fs.readFileSync(fallbackSrc, 'utf8');
@@ -63,35 +55,13 @@ async function main() {
 
   if (markdown) {
     fs.writeFileSync(targetPath, markdown, 'utf8');
-    console.log(`💾 Saved owned copy to: ${targetPath}`);
-
-    // If R2 credentials exist, upload backup to R2
-    if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
-      console.log(`☁️ Uploading permanent backup copy to Cloudflare R2...`);
-      try {
-        const s3 = new S3Client({
-          region: 'auto',
-          endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-          credentials: {
-            accessKeyId: R2_ACCESS_KEY_ID,
-            secretAccessKey: R2_SECRET_ACCESS_KEY,
-          },
-        });
-
-        await s3.send(new PutObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: 'roadmaps/red-team-roadmap.md',
-          Body: markdown,
-          ContentType: 'text/markdown; charset=utf-8',
-        }));
-        console.log(`✅ R2 backup completed at: roadmaps/red-team-roadmap.md`);
-      } catch (r2Err) {
-        console.warn(`⚠️ Could not upload R2 backup: ${r2Err.message}`);
-      }
-    }
+    console.log(`💾 Saved local copy to: ${targetPath}`);
   }
 
-  console.log('\n✨ Roadmap snapshot complete.\n');
+  console.log('\n✅ Roadmap sync finished.\n');
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error('Fatal error during roadmap sync:', err);
+  process.exit(1);
+});

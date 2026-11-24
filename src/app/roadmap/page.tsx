@@ -1,7 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { fetchRedTeamRoadmap } from '@/lib/roadmap';
-import { isR2Configured } from '@/lib/r2';
 import { Navbar } from '@/components/Navbar';
 import { RoadmapViewer } from '@/components/RoadmapViewer';
 
@@ -13,12 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default async function RoadmapPage() {
-  const isConfigured = isR2Configured();
   const data = await fetchRedTeamRoadmap();
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#090D16] text-[#E5E7EB] overflow-hidden">
-      <Navbar isStorageConfigured={isConfigured} />
+      <Navbar />
       <div className="flex-1 min-h-0 overflow-hidden">
         <RoadmapViewer initialData={data} />
       </div>

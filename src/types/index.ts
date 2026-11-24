@@ -6,6 +6,7 @@ export type FileType =
   | 'video'
   | 'pdf'
   | 'document'
+  | 'note'
   | 'presentation'
   | 'spreadsheet'
   | 'markdown'
@@ -16,7 +17,7 @@ export type FileType =
   | 'folder'
   | 'unknown';
 
-export type LessonSource = 'youtube' | 'gdrive' | 'markdown' | 'r2';
+export type LessonSource = 'youtube' | 'gdrive' | 'markdown';
 export type CourseSourceType = 'gdrive_folder' | 'youtube_playlist' | 'hybrid' | 'markdown';
 export type UserRole = 'student' | 'admin';
 
@@ -130,20 +131,29 @@ export interface DriveFolderTree {
 // ------------------------------------------------------------------------------
 
 export interface LessonItem {
-  id: string;
+  id: string; // file_id
+  fileId?: string; // permanent file_id
   name: string;
   title: string;
+  displayTitle?: string;
+  moduleName?: string;
   fileType: FileType;
   source: LessonSource;
   gdriveFileId?: string;
+  view_url?: string;
+  embed_url?: string;
+  download_url?: string;
   previewUrl?: string;
   downloadUrl?: string;
   youtubeId?: string;
   youtubeThumbnail?: string;
-  r2Key?: string;
+  size_mb?: number;
   size?: number;
   formattedSize?: string;
+  duration_min?: number;
   duration?: string;
+  subtitleUrl?: string;
+  content?: string;
   modifiedTime?: string;
   description?: string;
   isPendingUpload?: boolean;
@@ -217,7 +227,6 @@ export interface SearchResultItem {
   snippet?: string;
   youtubeId?: string;
   gdriveFileId?: string;
-  r2Key?: string;
 }
 
 export interface CatalogManifest {
@@ -235,3 +244,80 @@ export interface CatalogManifest {
   tracks: TrackConfig[];
   courses: Record<string, CatalogCourse>;
 }
+
+// ------------------------------------------------------------------------------
+// Unified Lesson Models (Flat Title-Based Architecture)
+// ------------------------------------------------------------------------------
+
+export interface LessonVideoItem {
+  file_id: string;
+  title: string;
+  clean_title: string;
+  filename?: string;
+  size_mb?: number;
+  duration_min?: number;
+  embed_url?: string;
+  view_url?: string;
+  download_url?: string;
+  youtubeRedirectUrl: string;
+  subtitleUrl?: string;
+}
+
+export interface LessonPdfItem {
+  file_id: string;
+  title: string;
+  clean_title: string;
+  filename?: string;
+  size_mb?: number;
+  view_url?: string;
+  embed_url?: string;
+  download_url?: string;
+}
+
+export interface LessonNoteItem {
+  file_id: string;
+  title: string;
+  clean_title: string;
+  filename?: string;
+  content?: string;
+  is_url?: boolean;
+  type?: string;
+  view_url?: string;
+  embed_url?: string;
+  download_url?: string;
+}
+
+export interface LessonLabItem {
+  file_id: string;
+  title: string;
+  clean_title: string;
+  filename?: string;
+  size_mb?: number;
+  type?: string;
+  view_url?: string;
+  download_url?: string;
+}
+
+export interface UnifiedLesson {
+  id: string;
+  trackId: string;
+  track: string;
+  trackAccent: string;
+  course: string;
+  subfolder?: string;
+  title: string;
+  order: number;
+  videos: LessonVideoItem[];
+  pdfs: LessonPdfItem[];
+  notes: LessonNoteItem[];
+  labs: LessonLabItem[];
+}
+
+export interface TrackMeta {
+  id: string;
+  title: string;
+  accent: string;
+  description?: string;
+  lessonCount: number;
+}
+

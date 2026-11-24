@@ -1,22 +1,56 @@
-import catalogData from '@/data/catalog.json';
-import { CatalogManifest, CatalogCourse, TrackConfig, SearchResultItem, LessonItem } from '@/types';
-
-const catalog = catalogData as unknown as CatalogManifest;
+import {
+  getUnifiedCatalog,
+  getAllTracks as getTracksFromLoader,
+  getAllCourses as getCoursesFromLoader,
+  getCourseBySlug as getCourseFromLoader,
+  searchCatalog as searchCatalogLoader,
+} from '@/utils/catalogLoader';
+import { CatalogManifest, CatalogCourse, TrackConfig, SearchResultItem } from '@/types';
 
 export function getCatalog(): CatalogManifest {
-  return catalog;
+  const { tracks, courses } = getUnifiedCatalog();
+  const allCoursesList = Object.values(courses);
+
+  let totalVideos = 0;
+  let totalPdfs = 0;
+  let totalLabs = 0;
+  let totalDocs = 0;
+
+  for (const c of allCoursesList) {
+    totalVideos += c.stats.videos;
+    totalPdfs += c.stats.pdfs;
+    totalLabs += c.stats.labs;
+    totalDocs += c.stats.docs;
+  }
+
+  const totalLessons = totalVideos + totalPdfs + totalLabs + totalDocs;
+
+  return {
+    version: '3.0.0',
+    generatedAt: new Date().toISOString(),
+    totalTracks: tracks.length,
+    totalCourses: allCoursesList.length,
+    totalLessons,
+    totalVideos,
+    totalPdfs,
+    totalLabs,
+    totalDocs,
+    formattedTotalSize: '3.2 GB',
+    tracks,
+    courses,
+  };
 }
 
 export function getAllCourses(): CatalogCourse[] {
-  return Object.values(catalog.courses || {});
+  return getCoursesFromLoader();
 }
 
 export function getCourse(slug: string): CatalogCourse | undefined {
-  return catalog.courses?.[slug];
+  return getCourseFromLoader(slug);
 }
 
 export function getTrack(trackId: string): TrackConfig | undefined {
-  return catalog.tracks?.find((t: TrackConfig) => t.id === trackId);
+  return getTracksFromLoader().find((t: TrackConfig) => t.id === trackId);
 }
 
 export function getRecommendedPath(): CatalogCourse[] {
@@ -25,108 +59,18 @@ export function getRecommendedPath(): CatalogCourse[] {
     'ethical-hacking-scratch',
     'red-team-roadmap',
     'ceh-study-materials',
-    'ceh-labs-practical',
+    'ceh-labs',
+    'red-team-resources',
     'offsec-resources',
     'blue-team-books',
+    'soc-resources',
   ];
 
   return slugs
-    .map(s => catalog.courses?.[s])
+    .map((s) => getCourseFromLoader(s))
     .filter(Boolean) as CatalogCourse[];
 }
 
 export function searchCatalog(query: string): SearchResultItem[] {
-  const q = (query || '').trim().toLowerCase();
-  if (!q) return [];
-
-  const results: SearchResultItem[] = [];
-  const courses: CatalogCourse[] = Object.values(catalog.courses || {});
-
-  for (const course of courses) {
-    // Match course level
-    if (
-      course.title.toLowerCase().includes(q) ||
-      course.description.toLowerCase().includes(q) ||
-      (course.tags || []).some((t: string) => t.toLowerCase().includes(q))
-    ) {
-      results.push({
-        id: `course-${course.slug}`,
-        title: course.title,
-        type: 'course',
-        courseSlug: course.slug,
-        courseTitle: course.title,
-        trackTitle: course.trackTitle,
-        accent: course.trackAccent,
-        snippet: course.description,
-      });
-    }
-
-    // Match root lessons
-    for (const lesson of course.rootLessons || []) {
-      if (
-        lesson.title.toLowerCase().includes(q) ||
-        lesson.name.toLowerCase().includes(q) ||
-        lesson.description?.toLowerCase().includes(q)
-      ) {
-        results.push({
-          id: lesson.id,
-          title: lesson.title,
-          type: 'lesson',
-          fileType: lesson.fileType,
-          source: lesson.source,
-          courseSlug: course.slug,
-          courseTitle: course.title,
-          trackTitle: course.trackTitle,
-          accent: course.trackAccent,
-          snippet: lesson.description || `${lesson.fileType.toUpperCase()} • ${lesson.formattedSize || lesson.duration || ''}`,
-          youtubeId: lesson.youtubeId,
-          r2Key: lesson.r2Key,
-        });
-      }
-    }
-
-    // Match modules and lessons
-    for (const mod of course.modules || []) {
-      if (mod.name.toLowerCase().includes(q)) {
-        results.push({
-          id: mod.id,
-          title: mod.name,
-          type: 'module',
-          courseSlug: course.slug,
-          courseTitle: course.title,
-          trackTitle: course.trackTitle,
-          accent: course.trackAccent,
-          moduleName: mod.name,
-          snippet: `Module with ${mod.lessons.length} lessons`,
-        });
-      }
-
-      for (const lesson of mod.lessons || []) {
-        if (
-          lesson.title.toLowerCase().includes(q) ||
-          lesson.name.toLowerCase().includes(q) ||
-          lesson.description?.toLowerCase().includes(q)
-        ) {
-          results.push({
-            id: lesson.id,
-            title: lesson.title,
-            type: 'lesson',
-            fileType: lesson.fileType,
-            source: lesson.source,
-            courseSlug: course.slug,
-            courseTitle: course.title,
-            trackTitle: course.trackTitle,
-            accent: course.trackAccent,
-            moduleName: mod.name,
-            snippet: `${lesson.fileType.toUpperCase()} • ${lesson.formattedSize || lesson.duration || ''}`,
-            youtubeId: lesson.youtubeId,
-            r2Key: lesson.r2Key,
-          });
-        }
-      }
-    }
-  }
-
-  // Deduplicate and cap to 30 items
-  return Array.from(new Map(results.map(r => [r.id, r])).values()).slice(0, 30);
+  return searchCatalogLoader(query);
 }
