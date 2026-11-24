@@ -49,9 +49,9 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [showReportModal, setShowReportModal] = useState(false);
   const [dynamicModules, setDynamicModules] = useState<CourseModule[]>(course.modules || []);
-  const [isDriveFolderFallback, setIsDriveFolderFallback] = useState<boolean>(
-    course.sourceType === 'gdrive_folder' || (!course.modules || course.modules.length === 0)
-  );
+  const isPureDriveCourse = course.sourceType === 'gdrive_folder' || (!course.modules || course.modules.length === 0);
+  const [isViewingDrive, setIsViewingDrive] = useState<boolean>(isPureDriveCourse);
+  const [isDriveFolderFallback, setIsDriveFolderFallback] = useState<boolean>(isPureDriveCourse);
 
   const accentColor = course.accentColor || course.trackAccent || '#10B981';
   const configured = isSupabaseConfigured();
@@ -134,7 +134,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
 
   // Set initial active lesson and open modules
   useEffect(() => {
-    if (!activeLesson && flattenedLessons.length > 0) {
+    if (!activeLesson && flattenedLessons.length > 0 && !isPureDriveCourse) {
       setActiveLesson(flattenedLessons[0].lesson);
       setActiveModuleName(flattenedLessons[0].moduleName);
     }
@@ -144,7 +144,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
       if (idx < 3) initialOpen[mod.id] = true;
     });
     setOpenModules(initialOpen);
-  }, [dynamicModules, flattenedLessons, activeLesson]);
+  }, [dynamicModules, flattenedLessons, isPureDriveCourse]);
 
   const toggleModule = (modId: string) => {
     setOpenModules((prev) => ({
@@ -154,6 +154,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
   };
 
   const selectLesson = (lesson: LessonItem, moduleName: string) => {
+    setIsViewingDrive(false);
     setActiveLesson(lesson);
     setActiveModuleName(moduleName);
   };
@@ -301,13 +302,12 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
             <div className="rounded-xl border border-gray-800/80 bg-[#070B14] overflow-hidden p-1">
               <button
                 onClick={() => {
-                  setActiveLesson(null);
+                  setIsViewingDrive(true);
                   setActiveModuleName('Google Drive Materials');
-                  setIsDriveFolderFallback(true);
                 }}
                 className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all flex items-center justify-between group ${
-                  !activeLesson && isDriveFolderFallback
-                    ? 'bg-amber-500/15 border border-amber-500/30 text-white font-medium'
+                  isViewingDrive
+                    ? 'bg-amber-500/20 border border-amber-500/40 text-amber-200 font-semibold shadow-sm'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-[#111827]'
                 }`}
               >
@@ -315,7 +315,11 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                   <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="truncate">Google Drive Files & Labs</span>
                 </div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400 border border-amber-800/40">
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${
+                  isViewingDrive
+                    ? 'bg-amber-500/30 text-amber-300 border-amber-500/50'
+                    : 'bg-amber-950/60 text-amber-400 border-amber-800/40'
+                }`}>
                   Drive
                 </span>
               </button>
@@ -323,7 +327,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
           )}
 
           {/* If pure folder embed mode */}
-          {isDriveFolderFallback && dynamicModules.length === 0 && (
+          {isViewingDrive && dynamicModules.length === 0 && (
             <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-800/30 text-xs text-amber-200">
               <div className="flex items-center gap-2 font-semibold mb-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -353,7 +357,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                         key={lesson.id}
                         onClick={() => selectLesson(lesson, 'Overview')}
                         className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all flex items-center justify-between group ${
-                          isActive
+                          isActive && !isViewingDrive
                             ? 'bg-emerald-500/15 border border-emerald-500/30 text-white font-medium'
                             : 'text-gray-400 hover:text-gray-200 hover:bg-[#111827]'
                         }`}
@@ -413,7 +417,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                           key={lesson.id}
                           onClick={() => selectLesson(lesson, mod.name)}
                           className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-all flex items-center justify-between group ${
-                            isActive
+                            isActive && !isViewingDrive
                               ? 'bg-emerald-500/15 border border-emerald-500/30 text-white font-medium'
                               : 'text-gray-400 hover:text-gray-200 hover:bg-[#111827]'
                           }`}
@@ -509,12 +513,23 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
 
         {/* Viewer Canvas */}
         <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
-          {activeLesson ? (
+          {(isViewingDrive || !activeLesson) && course.gdriveFolderId ? (
+            /* Google Drive Folder View */
+            <div className="flex-1 flex flex-col">
+              <DriveFolderEmbedViewer
+                folderId={course.gdriveFolderId}
+                courseTitle={course.title}
+                accentColor={accentColor}
+              />
+              <LessonNotes fileId={`folder-${course.gdriveFolderId}`} lessonName={course.title} />
+            </div>
+          ) : activeLesson ? (
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex-1 min-h-[500px]">
                 {/* 1. YouTube Video Engine */}
                 {activeLesson.source === 'youtube' || (activeLesson.youtubeId && !activeLesson.gdriveFileId) ? (
                   <VideoPlayer
+                    key={activeLesson.id || activeLesson.youtubeId}
                     lesson={activeLesson}
                     courseTitle={course.title}
                     isCompleted={completedLessons.has(activeLesson.id)}
@@ -525,6 +540,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                 ) : activeLesson.fileType === 'lab' ? (
                   /* 2. Lab Archive Engine */
                   <LabViewer
+                    key={activeLesson.id}
                     lesson={activeLesson}
                     courseTitle={course.title}
                     isCompleted={completedLessons.has(activeLesson.id)}
@@ -534,6 +550,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                 ) : activeLesson.fileType === 'markdown' ? (
                   /* 3. Markdown / Notes Engine */
                   <MarkdownViewer
+                    key={activeLesson.id}
                     lesson={activeLesson}
                     courseTitle={course.title}
                     isCompleted={completedLessons.has(activeLesson.id)}
@@ -542,22 +559,12 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                   />
                 ) : (
                   /* 4. Native Google Drive In-App Preview (PDF, Slides, Docs, Images, Videos) */
-                  <DrivePreviewViewer lesson={activeLesson} />
+                  <DrivePreviewViewer key={activeLesson.id} lesson={activeLesson} />
                 )}
               </div>
 
               {/* Personal Notes Drawer */}
               <LessonNotes fileId={activeLesson.id} lessonName={activeLesson.title} />
-            </div>
-          ) : (isDriveFolderFallback || course.sourceType === 'gdrive_folder') && course.gdriveFolderId ? (
-            /* Zero-Config Folder Fallback */
-            <div className="flex-1 flex flex-col">
-              <DriveFolderEmbedViewer
-                folderId={course.gdriveFolderId}
-                courseTitle={course.title}
-                accentColor={accentColor}
-              />
-              <LessonNotes fileId={`folder-${course.gdriveFolderId}`} lessonName={course.title} />
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">

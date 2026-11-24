@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Folder, Loader2, Sparkles, Key } from 'lucide-react';
+import { Folder, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { getDriveFolderEmbedUrl } from '@/lib/drive';
 
 interface DriveFolderEmbedViewerProps {
@@ -17,11 +17,12 @@ export function DriveFolderEmbedViewer({
 }: DriveFolderEmbedViewerProps) {
   const [loading, setLoading] = useState(true);
   const embedUrl = getDriveFolderEmbedUrl(folderId);
+  const directDriveUrl = `https://drive.google.com/drive/folders/${folderId}`;
 
   return (
     <div className="flex flex-col h-full bg-[#090D16] text-white">
       {/* Zero-Config Explainer Banner */}
-      <div className="px-6 py-3 border-b border-[#1F2937] bg-[#0E1524]/90 backdrop-blur flex items-center justify-between shrink-0">
+      <div className="px-4 md:px-6 py-3 border-b border-[#1F2937] bg-[#0E1524]/90 backdrop-blur flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-xs font-mono text-gray-300">
           <Folder className="w-4 h-4 text-amber-400" />
           <span>Interactive Folder View</span>
@@ -29,9 +30,18 @@ export function DriveFolderEmbedViewer({
             Zero-Config Ready
           </span>
         </div>
-        <p className="hidden md:block text-[11px] font-mono text-gray-400">
-          Native in-app Google Drive catalog tree
-        </p>
+        
+        <div className="flex items-center gap-2">
+          <a
+            href={directDriveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-amber-300 bg-amber-950/40 border border-amber-800/50 hover:bg-amber-950/80 hover:border-amber-700 transition-all shadow-sm"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Open in Google Drive</span>
+          </a>
+        </div>
       </div>
 
       {/* Embedded Folder View Canvas */}
@@ -47,6 +57,7 @@ export function DriveFolderEmbedViewer({
           src={embedUrl}
           title={courseTitle}
           className="w-full h-full min-h-[550px] rounded-xl border border-[#1F2937] bg-white shadow-2xl"
+          allow="autoplay; encrypted-media"
           onLoad={() => setLoading(false)}
         />
       </div>

@@ -306,6 +306,7 @@ export function VideoPlayer({
           {isYouTube ? (
             /* Dual-Engine Engine A: Privacy-Enhanced YouTube IFrame */
             <iframe
+              key={lesson.youtubeId}
               ref={iframeRef}
               src={`https://www.youtube-nocookie.com/embed/${lesson.youtubeId}?rel=0&modestbranding=1&iv_load_policy=3&enablejsapi=1`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
