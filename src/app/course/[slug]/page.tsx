@@ -3,7 +3,22 @@ import { Metadata } from 'next';
 import { getAllLessons, getAllTracks } from '@/utils/lessonBuilder';
 import { FlatLessonWorkspace } from '@/components/FlatLessonWorkspace';
 
-export const dynamic = 'force-dynamic';
+export function generateStaticParams() {
+  const tracks = getAllTracks();
+  const params = tracks.map((t) => ({ slug: t.id }));
+  params.push(
+    { slug: 'cybersecurity-fundamentals' },
+    { slug: 'fundamentals' },
+    { slug: 'ethical-hacking-scratch' },
+    { slug: 'ethical-hacking' },
+    { slug: 'red-team-roadmap' },
+    { slug: 'ceh' },
+    { slug: 'red-team-resources' },
+    { slug: 'offsec' },
+    { slug: 'blue-team-soc' }
+  );
+  return params;
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;

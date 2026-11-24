@@ -21,8 +21,6 @@ import {
 } from 'lucide-react';
 import { Youtube } from '@/components/YoutubeIcon';
 
-export const dynamic = 'force-dynamic';
-
 export default function HomePage() {
   const catalog = getCatalog();
 

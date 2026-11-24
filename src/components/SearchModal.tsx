@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { SearchResultItem } from '@/types';
+import { searchCatalog } from '@/lib/catalog';
 import {
   Search,
   X,
@@ -57,17 +58,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
     setLoading(true);
     const timeout = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setResults(data.results || []);
-          setSelectedIndex(0);
-          setLoading(false);
-        })
-        .catch(() => {
-          setLoading(false);
-        });
-    }, 200);
+      try {
+        const found = searchCatalog(query.trim());
+        setResults(found);
+        setSelectedIndex(0);
+      } finally {
+        setLoading(false);
+      }
+    }, 150);
 
     return () => clearTimeout(timeout);
   }, [query]);

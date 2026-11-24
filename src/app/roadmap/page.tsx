@@ -4,8 +4,6 @@ import { fetchRedTeamRoadmap } from '@/lib/roadmap';
 import { Navbar } from '@/components/Navbar';
 import { RoadmapViewer } from '@/components/RoadmapViewer';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'Red Team Operations Roadmap // Cyber Academy',
   description: 'Interactive offensive security curriculum and career roadmap tracking C2 frameworks, Active Directory dominance, and adversary emulation.',
