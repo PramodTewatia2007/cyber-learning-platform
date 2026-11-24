@@ -98,6 +98,16 @@ alter table public.user_progress enable row level security;
 alter table public.lesson_notes enable row level security;
 alter table public.broken_link_reports enable row level security;
 
+-- Grant API roles (anon and authenticated) access so Row Level Security handles permissions
+grant usage on schema public to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant all on all sequences in schema public to anon, authenticated;
+grant all on all routines in schema public to anon, authenticated;
+
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
+alter default privileges in schema public grant all on routines to anon, authenticated;
+
 -- Admin check helper
 create or replace function public.is_admin()
 returns boolean language sql security definer as $$
