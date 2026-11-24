@@ -30,6 +30,15 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const handleSelect = (item: SearchResultItem) => {
+    onClose();
+    if (item.courseSlug === 'red-team-roadmap') {
+      router.push('/roadmap');
+    } else {
+      router.push(`/course/${item.courseSlug}`);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -84,15 +93,6 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selectedIndex]);
-
-  const handleSelect = (item: SearchResultItem) => {
-    onClose();
-    if (item.courseSlug === 'red-team-roadmap') {
-      router.push('/roadmap');
-    } else {
-      router.push(`/course/${item.courseSlug}`);
-    }
-  };
 
   if (!isOpen) return null;
 

@@ -509,25 +509,25 @@ export function UnifiedLessonViewer({
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeRaw]}
                       components={{
-                        h1: ({ node, ...props }) => (
+                        h1: ({ node: _node, ...props }) => (
                           <h1 className="text-xl md:text-2xl font-bold text-white border-b border-[#1F2937] pb-3 mb-5 mt-6" {...props} />
                         ),
-                        h2: ({ node, ...props }) => (
+                        h2: ({ node: _node, ...props }) => (
                           <h2 className="text-lg md:text-xl font-semibold text-gray-100 border-b border-[#1F2937]/60 pb-2 mb-4 mt-6" {...props} />
                         ),
-                        h3: ({ node, ...props }) => (
+                        h3: ({ node: _node, ...props }) => (
                           <h3 className="text-base md:text-lg font-medium text-gray-200 mb-2 mt-4" {...props} />
                         ),
-                        p: ({ node, ...props }) => (
+                        p: ({ node: _node, ...props }) => (
                           <p className="text-gray-300 leading-relaxed mb-4 text-xs md:text-sm" {...props} />
                         ),
-                        details: ({ node, ...props }) => (
+                        details: ({ node: _node, ...props }) => (
                           <details className="my-3 p-3.5 rounded-xl bg-[#080D1A] border border-[#1F2937] text-gray-300 open:border-emerald-500/40 transition-colors" {...props} />
                         ),
-                        summary: ({ node, ...props }) => (
+                        summary: ({ node: _node, ...props }) => (
                           <summary className="font-semibold text-white cursor-pointer select-none hover:text-emerald-400 py-1 transition-colors text-xs md:text-sm" {...props} />
                         ),
-                        code: ({ node, className, children, ...props }: any) => {
+                        code: ({ node: _node, className, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { node?: unknown }) => {
                           const match = /language-(\w+)/.exec(className || '');
                           const isInline = !match && !String(children).includes('\n');
                           const codeString = String(children).replace(/\n$/, '');

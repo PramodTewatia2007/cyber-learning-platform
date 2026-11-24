@@ -1,4 +1,4 @@
-import { CatalogCourse, DbCourse, DbLesson } from '@/types';
+import { CatalogCourse, DbCourse, DbLesson, FileType, LessonItem, LessonSource } from '@/types';
 import { getCourse as getCatalogCourse } from '@/lib/catalog';
 import { getSupabaseServerClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 
@@ -26,7 +26,7 @@ export async function fetchCourseBySlug(slug: string): Promise<CatalogCourse | n
           const lessons: DbLesson[] = dbCourse.lessons || [];
 
           // Group lessons by module_name
-          const modulesMap = new Map<string, any[]>();
+          const modulesMap = new Map<string, LessonItem[]>();
           lessons.forEach((l) => {
             const modName = l.module_name || 'Core Modules';
             if (!modulesMap.has(modName)) {
@@ -36,8 +36,8 @@ export async function fetchCourseBySlug(slug: string): Promise<CatalogCourse | n
               id: l.id,
               name: l.title,
               title: l.title,
-              fileType: l.lesson_type === 'youtube_video' ? 'video' : 'document',
-              source: l.lesson_type === 'youtube_video' ? 'youtube' : 'gdrive',
+              fileType: l.lesson_type === 'youtube_video' ? ('video' as FileType) : ('document' as FileType),
+              source: l.lesson_type === 'youtube_video' ? ('youtube' as LessonSource) : ('gdrive' as LessonSource),
               youtubeId: l.youtube_video_id || undefined,
               gdriveFileId: l.gdrive_file_id || undefined,
               duration: l.duration_text || undefined,

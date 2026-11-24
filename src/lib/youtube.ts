@@ -147,7 +147,7 @@ export async function getPlaylistVideos(playlistId: string): Promise<YouTubePlay
     } while (pageToken);
 
     return videos;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.warn(`[YouTube API] Error fetching playlist ${playlistId}:`, err);
     throw err;
   }

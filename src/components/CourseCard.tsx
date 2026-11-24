@@ -20,7 +20,7 @@ interface CourseCardProps {
 
 export function CourseCard({ course, trackAccent }: CourseCardProps) {
   const accent = trackAccent || course.accentColor || course.trackAccent || '#10B981';
-  const [completedCount, setCompletedCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState<number>(0);
 
   useEffect(() => {
     try {
@@ -37,7 +37,7 @@ export function CourseCard({ course, trackAccent }: CourseCardProps) {
           setCompletedCount(Array.isArray(items) ? items.length : 0);
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [course.slug, course.isRoadmap]);

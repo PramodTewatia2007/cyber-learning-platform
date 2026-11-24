@@ -1,6 +1,6 @@
 import driveAssetsRaw from '../data/drive_assets.json';
 import videoLinksRaw from '../data/video_links.json';
-import { CatalogCourse, CourseModule, CourseStats, FileType, LessonItem, TrackConfig } from '../types';
+import { CatalogCourse, CourseModule, CourseStats, FileType, LessonItem, SearchResultItem, TrackConfig } from '../types';
 
 // Types for raw inputs
 interface RawDriveItem {
@@ -487,12 +487,12 @@ export function getCourseBySlug(slug: string): CatalogCourse | undefined {
   return computeCatalog().courses[slug];
 }
 
-export function searchCatalog(query: string) {
+export function searchCatalog(query: string): SearchResultItem[] {
   const q = (query || '').trim().toLowerCase();
   if (!q) return [];
 
   const catalog = computeCatalog();
-  const results: any[] = [];
+  const results: SearchResultItem[] = [];
 
   for (const course of Object.values(catalog.courses)) {
     if (course.title.toLowerCase().includes(q) || course.description.toLowerCase().includes(q)) {

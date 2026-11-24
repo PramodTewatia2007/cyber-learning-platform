@@ -81,21 +81,24 @@ export function FlatLessonWorkspace({
     if (filteredLessons.length > 0) {
       const exists = filteredLessons.some((l) => l.id === activeLesson?.id);
       if (!exists) {
-        setActiveLesson(filteredLessons[0]);
+        const nextFirst = filteredLessons[0];
+        setTimeout(() => setActiveLesson(nextFirst), 0);
       }
     }
   }, [filteredLessons, activeLesson]);
 
   // Load progress from localStorage and Supabase
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('cyber_lms_completed_unified_lessons');
-      if (saved) {
-        setCompletedLessons(new Set(JSON.parse(saved)));
+    setTimeout(() => {
+      try {
+        const saved = localStorage.getItem('cyber_lms_completed_unified_lessons');
+        if (saved) {
+          setCompletedLessons(new Set(JSON.parse(saved)));
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
+    }, 0);
 
     if (user && configured) {
       const supabase = getSupabaseBrowserClient();

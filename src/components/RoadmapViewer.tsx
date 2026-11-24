@@ -36,14 +36,16 @@ export function RoadmapViewer({ initialData }: RoadmapViewerProps) {
 
   useEffect(() => {
     // Load saved completion state
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        setCompletedItems(new Set(JSON.parse(saved)));
+    setTimeout(() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          setCompletedItems(new Set(JSON.parse(saved)));
+        }
+      } catch (e) {
+        console.warn('Could not read saved roadmap progress:', e);
       }
-    } catch (e) {
-      console.warn('Could not read saved roadmap progress:', e);
-    }
+    }, 0);
 
     if (!initialData) {
       fetch('/api/roadmap')
@@ -86,12 +88,13 @@ export function RoadmapViewer({ initialData }: RoadmapViewerProps) {
     }
   };
 
+  const tocList = data?.toc;
   const filteredToc = useMemo(() => {
-    if (!data?.toc) return [];
-    if (!searchFilter.trim()) return data.toc;
+    if (!tocList) return [];
+    if (!searchFilter.trim()) return tocList;
     const q = searchFilter.toLowerCase();
-    return data.toc.filter((item) => item.title.toLowerCase().includes(q));
-  }, [data?.toc, searchFilter]);
+    return tocList.filter((item) => item.title.toLowerCase().includes(q));
+  }, [tocList, searchFilter]);
 
   const totalItemsCount = data?.totalMilestones || 100;
   const progressPercent = Math.min(

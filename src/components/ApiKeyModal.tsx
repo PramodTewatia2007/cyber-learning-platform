@@ -134,7 +134,7 @@ export function ApiKeyModal({ isOpen, onClose, isConfigured }: ApiKeyModalProps)
                 </button>
               </div>
               <div className="p-2 bg-black/60 rounded border border-gray-900 font-mono text-[11px] text-cyan-300">
-                <code>UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';</code>
+                <code>UPDATE profiles SET role = &apos;admin&apos; WHERE email = &apos;your@email.com&apos;;</code>
               </div>
             </div>
 

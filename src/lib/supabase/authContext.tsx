@@ -112,24 +112,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!configured) {
       // Check for saved demo session in localStorage
-      try {
-        const savedDemo = localStorage.getItem('cyber_lms_demo_profile');
-        if (savedDemo) {
-          const parsed = JSON.parse(savedDemo);
-          setProfile(parsed);
-          setUser({
-            id: parsed.id || 'demo-user-id',
-            email: parsed.email,
-            app_metadata: {},
-            user_metadata: { full_name: parsed.full_name },
-            aud: 'authenticated',
-            created_at: parsed.created_at,
-          } as User);
+      setTimeout(() => {
+        try {
+          const savedDemo = localStorage.getItem('cyber_lms_demo_profile');
+          if (savedDemo) {
+            const parsed = JSON.parse(savedDemo);
+            setProfile(parsed);
+            setUser({
+              id: parsed.id || 'demo-user-id',
+              email: parsed.email,
+              app_metadata: {},
+              user_metadata: { full_name: parsed.full_name },
+              aud: 'authenticated',
+              created_at: parsed.created_at,
+            } as User);
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
-      }
-      setIsLoading(false);
+        setIsLoading(false);
+      }, 0);
       return;
     }
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/lib/supabase/authContext';
-import { parseResourceLink, ParsedLinkResult } from '@/lib/youtube';
+import { parseResourceLink, ParsedLinkResult, YouTubePlaylistItem } from '@/lib/youtube';
 import { CANONICAL_TRACKS, CANONICAL_COURSES, INITIAL_ATTACHED_LESSONS } from '@/config/seedData';
 import { getSupabaseBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { DbCourse, DbLesson, DbBrokenLinkReport } from '@/types';
@@ -45,14 +45,14 @@ export default function AdminDashboardPage() {
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [playlistCourseId, setPlaylistCourseId] = useState(CANONICAL_COURSES[1].id);
   const [playlistModule, setPlaylistModule] = useState('Video Lectures');
-  const [previewVideos, setPreviewVideos] = useState<any[]>([]);
+  const [previewVideos, setPreviewVideos] = useState<YouTubePlaylistItem[]>([]);
   const [isFetchingPlaylist, setIsFetchingPlaylist] = useState(false);
   const [isImportingPlaylist, setIsImportingPlaylist] = useState(false);
   const [playlistSuccess, setPlaylistSuccess] = useState<string | null>(null);
 
   // Courses & Lessons Management State
   const [coursesList, setCoursesList] = useState<DbCourse[]>(CANONICAL_COURSES);
-  const [lessonsList, setLessonsList] = useState<DbLesson[]>(INITIAL_ATTACHED_LESSONS as any);
+  const [lessonsList, setLessonsList] = useState<DbLesson[]>(INITIAL_ATTACHED_LESSONS as unknown as DbLesson[]);
 
   // Broken Reports State
   const [reportsList, setReportsList] = useState<DbBrokenLinkReport[]>([]);
@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
       // Local demo reports
       try {
         const local = JSON.parse(localStorage.getItem('cyber_lms_broken_reports') || '[]');
-        setReportsList(local);
+        setTimeout(() => setReportsList(local), 0);
       } catch {
         // ignore
       }
@@ -160,8 +160,8 @@ export default function AdminDashboardPage() {
       } else {
         alert(data.error || 'Failed to fetch playlist');
       }
-    } catch (err: any) {
-      alert('Network error: ' + err.message);
+    } catch (err: unknown) {
+      alert('Network error: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsFetchingPlaylist(false);
     }
@@ -188,8 +188,8 @@ export default function AdminDashboardPage() {
       setPreviewVideos([]);
       setPlaylistUrl('');
       setTimeout(() => setPlaylistSuccess(null), 3000);
-    } catch (err: any) {
-      alert('Error importing playlist: ' + err.message);
+    } catch (err: unknown) {
+      alert('Error importing playlist: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsImportingPlaylist(false);
     }
@@ -239,11 +239,11 @@ export default function AdminDashboardPage() {
             </div>
             <h1 className="text-xl font-bold text-white">Admin Privileges Required</h1>
             <p className="text-xs text-gray-400 leading-relaxed">
-              This dashboard is restricted to users with <code className="text-emerald-400 font-mono">role = 'admin'</code> in Supabase.
+              This dashboard is restricted to users with <code className="text-emerald-400 font-mono">role = &apos;admin&apos;</code> in Supabase.
             </p>
             <div className="p-3 bg-black/40 rounded-xl border border-gray-800 text-xs font-mono text-gray-300 text-left">
               <span className="text-gray-500 block text-[10px] uppercase">SQL Role Elevation</span>
-              <code>UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';</code>
+              <code>UPDATE profiles SET role = &apos;admin&apos; WHERE email = &apos;your@email.com&apos;;</code>
             </div>
             <div className="pt-2">
               <button

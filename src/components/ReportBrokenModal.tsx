@@ -47,8 +47,8 @@ export function ReportBrokenModal({
         if (insertErr) {
           throw new Error(insertErr.message);
         }
-      } catch (err: any) {
-        setError(err.message || 'Failed to submit report');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to submit report');
         setIsSubmitting(false);
         return;
       }

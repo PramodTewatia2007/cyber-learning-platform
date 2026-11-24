@@ -182,48 +182,48 @@ export function MarkdownViewer({
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
-                  h1: ({ node, ...props }) => (
+                  h1: ({ node: _node, ...props }) => (
                     <h1 className="text-2xl md:text-3xl font-bold text-white border-b border-[#1F2937] pb-3 mb-6 mt-8" {...props} />
                   ),
-                  h2: ({ node, ...props }) => (
+                  h2: ({ node: _node, ...props }) => (
                     <h2 className="text-xl md:text-2xl font-semibold text-gray-100 border-b border-[#1F2937]/60 pb-2 mb-4 mt-8" {...props} />
                   ),
-                  h3: ({ node, ...props }) => (
+                  h3: ({ node: _node, ...props }) => (
                     <h3 className="text-lg md:text-xl font-medium text-gray-200 mb-3 mt-6" {...props} />
                   ),
-                  p: ({ node, ...props }) => (
+                  p: ({ node: _node, ...props }) => (
                     <p className="text-gray-300 leading-relaxed mb-4 text-sm md:text-base" {...props} />
                   ),
-                  ul: ({ node, ...props }) => (
+                  ul: ({ node: _node, ...props }) => (
                     <ul className="list-disc list-inside space-y-1.5 text-gray-300 mb-4 pl-2" {...props} />
                   ),
-                  ol: ({ node, ...props }) => (
+                  ol: ({ node: _node, ...props }) => (
                     <ol className="list-decimal list-inside space-y-1.5 text-gray-300 mb-4 pl-2" {...props} />
                   ),
-                  details: ({ node, ...props }) => (
+                  details: ({ node: _node, ...props }) => (
                     <details className="my-4 p-4 rounded-xl bg-[#0D1424] border border-[#1F2937] text-gray-300 open:border-emerald-500/40 transition-colors" {...props} />
                   ),
-                  summary: ({ node, ...props }) => (
+                  summary: ({ node: _node, ...props }) => (
                     <summary className="font-semibold text-white cursor-pointer select-none hover:text-emerald-400 py-1 transition-colors" {...props} />
                   ),
-                  blockquote: ({ node, ...props }) => (
+                  blockquote: ({ node: _node, ...props }) => (
                     <blockquote className="border-l-4 border-emerald-500 bg-[#0E1726] px-4 py-3 rounded-r-lg my-4 text-gray-300 not-italic" {...props} />
                   ),
-                  table: ({ node, ...props }) => (
+                  table: ({ node: _node, ...props }) => (
                     <div className="overflow-x-auto my-6 border border-[#1F2937] rounded-lg">
                       <table className="w-full text-left text-sm text-gray-300 border-collapse" {...props} />
                     </div>
                   ),
-                  th: ({ node, ...props }) => (
+                  th: ({ node: _node, ...props }) => (
                     <th className="bg-[#111827] px-4 py-2.5 font-semibold text-gray-200 border-b border-[#1F2937]" {...props} />
                   ),
-                  td: ({ node, ...props }) => (
+                  td: ({ node: _node, ...props }) => (
                     <td className="px-4 py-2.5 border-b border-[#1F2937]/50 text-gray-300" {...props} />
                   ),
-                  a: ({ node, ...props }) => (
+                  a: ({ node: _node, ...props }) => (
                     <a className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2" target="_blank" rel="noreferrer" {...props} />
                   ),
-                  code: ({ node, className, children, ...props }: any) => {
+                  code: ({ node: _node, className, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { node?: unknown }) => {
                     const match = /language-(\w+)/.exec(className || '');
                     const isInline = !match && !String(children).includes('\n');
                     const codeString = String(children).replace(/\n$/, '');
