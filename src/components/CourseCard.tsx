@@ -15,10 +15,11 @@ import {
 
 interface CourseCardProps {
   course: CatalogCourse;
-  trackAccent: string;
+  trackAccent?: string;
 }
 
 export function CourseCard({ course, trackAccent }: CourseCardProps) {
+  const accent = trackAccent || course.accentColor || course.trackAccent || '#10B981';
   const [completedCount, setCompletedCount] = useState(0);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export function CourseCard({ course, trackAccent }: CourseCardProps) {
       {/* Accent corner line */}
       <div
         className="absolute top-0 left-0 right-0 h-1 transition-all duration-300"
-        style={{ backgroundColor: trackAccent }}
+        style={{ backgroundColor: accent }}
       />
 
       <div>
@@ -59,14 +60,14 @@ export function CourseCard({ course, trackAccent }: CourseCardProps) {
           <div className="flex items-center gap-1.5 flex-wrap">
             {course.recommendedStep && (
               <span
-                style={{ color: trackAccent, borderColor: `${trackAccent}40`, backgroundColor: `${trackAccent}15` }}
+                style={{ color: accent, borderColor: `${accent}40`, backgroundColor: `${accent}15` }}
                 className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border"
               >
                 STEP #{course.recommendedStep}
               </span>
             )}
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-              {course.isRoadmap ? 'Roadmap Snapshot' : 'R2 + YouTube'}
+              {course.isRoadmap ? 'Roadmap Snapshot' : 'Drive + YouTube'}
             </span>
           </div>
 
@@ -90,7 +91,7 @@ export function CourseCard({ course, trackAccent }: CourseCardProps) {
 
         {/* Tags */}
         <div className="flex flex-wrap gap-1.5 my-3.5">
-          {course.tags.slice(0, 3).map((tag) => (
+          {course.tags?.slice(0, 3).map((tag) => (
             <span
               key={tag}
               className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#090D16] text-gray-400 border border-gray-800"

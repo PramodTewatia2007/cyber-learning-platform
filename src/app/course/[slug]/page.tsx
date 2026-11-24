@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
-import { getCourse, getAllCourses } from '@/lib/catalog';
+import { fetchCourseBySlug } from '@/lib/courses';
 import { CourseWorkspace } from '@/components/CourseWorkspace';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const course = getCourse(slug);
+  const course = await fetchCourseBySlug(slug);
   if (!course) return { title: 'Course Not Found // Cyber Academy' };
 
   return {
@@ -28,7 +28,7 @@ export default async function CoursePage({ params }: PageProps) {
     redirect('/roadmap');
   }
 
-  const course = getCourse(slug);
+  const course = await fetchCourseBySlug(slug);
   if (!course) {
     notFound();
   }

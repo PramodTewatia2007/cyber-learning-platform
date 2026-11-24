@@ -4,10 +4,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { CatalogCourse, CourseModule, LessonItem } from '@/types';
 import { VideoPlayer } from './VideoPlayer';
-import { PdfViewer } from './viewers/PdfViewer';
+import { DrivePreviewViewer } from './viewers/DrivePreviewViewer';
+import { DriveFolderEmbedViewer } from './viewers/DriveFolderEmbedViewer';
 import { MarkdownViewer } from './viewers/MarkdownViewer';
 import { LabViewer } from './viewers/LabViewer';
 import { LessonNotes } from './LessonNotes';
+import { ReportBrokenModal } from './ReportBrokenModal';
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,32 +26,61 @@ import {
   ArrowLeft,
   Menu,
   X,
-  AlertCircle,
+  AlertTriangle,
   Layers,
-  Cloud
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { Youtube } from './YoutubeIcon';
+import { useAuth } from '@/lib/supabase/authContext';
+import { getSupabaseBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface CourseWorkspaceProps {
   course: CatalogCourse;
 }
 
 export function CourseWorkspace({ course }: CourseWorkspaceProps) {
+  const { user } = useAuth();
   const [activeLesson, setActiveLesson] = useState<LessonItem | null>(null);
   const [activeModuleName, setActiveModuleName] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [searchFilter, setSearchFilter] = useState('');
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
-  const [showUnmappedDrawer, setShowUnmappedDrawer] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [dynamicModules, setDynamicModules] = useState<CourseModule[]>(course.modules || []);
+  const [isDriveFolderFallback, setIsDriveFolderFallback] = useState(false);
 
   const accentColor = course.accentColor || course.trackAccent || '#10B981';
+  const configured = isSupabaseConfigured();
+
+  // If initial course has no modules but has a gdriveFolderId, fetch from /api/drive/[folderId]
+  useEffect(() => {
+    if ((!course.modules || course.modules.length === 0) && course.gdriveFolderId) {
+      fetch(`/api/drive/${course.gdriveFolderId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.modules && data.modules.length > 0) {
+            setDynamicModules(data.modules);
+            setIsDriveFolderFallback(false);
+          } else {
+            setIsDriveFolderFallback(true);
+          }
+        })
+        .catch(() => {
+          setIsDriveFolderFallback(true);
+        });
+    } else {
+      setDynamicModules(course.modules || []);
+      setIsDriveFolderFallback(false);
+    }
+  }, [course]);
 
   // Flattened ordered lessons for Previous / Next buttons
   const flattenedLessons = useMemo(() => {
     const list: { lesson: LessonItem; moduleName: string }[] = [];
 
-    course.rootLessons.forEach((lesson) => {
+    (course.rootLessons || []).forEach((lesson) => {
       list.push({ lesson, moduleName: 'Overview' });
     });
 
@@ -62,21 +93,42 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
       }
     };
 
-    course.modules.forEach(traverse);
+    dynamicModules.forEach(traverse);
     return list;
-  }, [course]);
+  }, [course.rootLessons, dynamicModules]);
 
-  // Load completed lessons from localStorage
+  // Load completed lessons from localStorage and Supabase
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`cyber_lms_completed_${course.slug}`);
       if (saved) {
         setCompletedLessons(new Set(JSON.parse(saved)));
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
-  }, [course.slug]);
+
+    if (user && configured) {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        supabase
+          .from('user_progress')
+          .select('item_key')
+          .eq('user_id', user.id)
+          .eq('course_slug', course.slug)
+          .eq('completed', true)
+          .then(({ data }) => {
+            if (data && data.length > 0) {
+              setCompletedLessons((prev) => {
+                const merged = new Set(prev);
+                data.forEach((r) => merged.add(r.item_key));
+                return merged;
+              });
+            }
+          });
+      }
+    }
+  }, [course.slug, user, configured]);
 
   // Set initial active lesson and open modules
   useEffect(() => {
@@ -86,11 +138,11 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
     }
 
     const initialOpen: Record<string, boolean> = {};
-    course.modules.forEach((mod, idx) => {
+    dynamicModules.forEach((mod, idx) => {
       if (idx < 3) initialOpen[mod.id] = true;
     });
     setOpenModules(initialOpen);
-  }, [course, flattenedLessons, activeLesson]);
+  }, [dynamicModules, flattenedLessons, activeLesson]);
 
   const toggleModule = (modId: string) => {
     setOpenModules((prev) => ({
@@ -99,76 +151,86 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
     }));
   };
 
-  const toggleComplete = (lessonId: string) => {
-    setCompletedLessons((prev) => {
-      const next = new Set(prev);
-      if (next.has(lessonId)) {
-        next.delete(lessonId);
-      } else {
-        next.add(lessonId);
-      }
-      localStorage.setItem(`cyber_lms_completed_${course.slug}`, JSON.stringify(Array.from(next)));
-      return next;
-    });
+  const selectLesson = (lesson: LessonItem, moduleName: string) => {
+    setActiveLesson(lesson);
+    setActiveModuleName(moduleName);
   };
 
-  const selectLesson = (lesson: LessonItem, modName: string) => {
-    setActiveLesson(lesson);
-    setActiveModuleName(modName);
-    if (window.innerWidth < 768) {
-      setSidebarOpen(false);
+  const toggleComplete = async (lessonId: string) => {
+    const nextSet = new Set(completedLessons);
+    const isNowCompleted = !nextSet.has(lessonId);
+
+    if (isNowCompleted) {
+      nextSet.add(lessonId);
+    } else {
+      nextSet.delete(lessonId);
+    }
+
+    setCompletedLessons(nextSet);
+    localStorage.setItem(`cyber_lms_completed_${course.slug}`, JSON.stringify(Array.from(nextSet)));
+
+    // Sync to Supabase if authenticated
+    if (user && configured) {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        try {
+          await supabase.from('user_progress').upsert({
+            user_id: user.id,
+            course_slug: course.slug,
+            item_key: lessonId,
+            completed: isNowCompleted,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,item_key' });
+        } catch (err) {
+          console.warn('Could not sync progress to Supabase:', err);
+        }
+      }
     }
   };
 
-  const currentIndex = flattenedLessons.findIndex((item) => item.lesson.id === activeLesson?.id);
+  // Find index of active lesson for Prev/Next
+  const currentIndex = flattenedLessons.findIndex((l) => l.lesson.id === activeLesson?.id);
   const prevLesson = currentIndex > 0 ? flattenedLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex >= 0 && currentIndex < flattenedLessons.length - 1 ? flattenedLessons[currentIndex + 1] : null;
 
-  const completionPercent = flattenedLessons.length > 0
-    ? Math.round((completedLessons.size / flattenedLessons.length) * 100)
-    : 0;
-
+  // Icon for lesson
   const getLessonIcon = (lesson: LessonItem) => {
-    if (lesson.source === 'youtube') {
+    if (lesson.source === 'youtube' || lesson.fileType === 'video') {
       return <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />;
     }
-    switch (lesson.fileType) {
-      case 'video':
-        return <Film className="w-3.5 h-3.5 text-red-400 shrink-0" />;
-      case 'pdf':
-        return <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
-      case 'lab':
-      case 'archive':
-        return <FileArchive className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
-      case 'markdown':
-        return <FileCode className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
-      default:
-        return <FileText className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
+    if (lesson.fileType === 'pdf') {
+      return <BookOpen className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
     }
+    if (lesson.fileType === 'lab') {
+      return <FileArchive className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+    }
+    if (lesson.fileType === 'markdown') {
+      return <FileCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+    }
+    return <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />;
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#090D16] text-white">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-[#090D16]">
       {/* Collapsible Left Sidebar */}
       <aside
-        className={`fixed md:relative inset-y-0 left-0 z-40 bg-[#0A0F1D] border-r border-[#1F2937] flex flex-col transition-all duration-300 ${
-          sidebarOpen ? 'w-80 md:w-88 translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden'
-        }`}
+        className={`border-r border-[#1F2937] bg-[#0B101E] flex flex-col shrink-0 transition-all duration-300 z-20 ${
+          sidebarOpen ? 'w-80 md:w-96' : 'w-0'
+        } overflow-hidden`}
       >
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-[#1F2937] bg-[#0E1524]">
-          <div className="flex items-center justify-between mb-3">
+        {/* Course Info & Back Link */}
+        <div className="p-4 border-b border-gray-800 bg-[#0E1524]">
+          <div className="flex items-center justify-between mb-2">
             <Link
               href="/"
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-gray-400 hover:text-emerald-400 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Catalog Home</span>
+              <span>Catalog</span>
             </Link>
-
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-1 text-gray-400 hover:text-white"
+              className="md:hidden p-1 rounded text-gray-400 hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
@@ -181,14 +243,9 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
             >
               {course.trackTitle}
             </span>
-            {course.pendingVideoCount && course.pendingVideoCount > 0 ? (
-              <button
-                onClick={() => setShowUnmappedDrawer(true)}
-                className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 hover:bg-amber-900/60 transition-colors"
-              >
-                {course.pendingVideoCount} Unmapped
-              </button>
-            ) : null}
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-800 text-gray-300">
+              {(course.sourceType || 'gdrive_folder').toUpperCase()}
+            </span>
           </div>
 
           <h2 className="text-sm font-bold text-gray-100 line-clamp-2 mt-1">
@@ -199,40 +256,64 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs font-mono text-gray-400 mb-1">
               <span>Course Progress</span>
-              <span className="font-bold text-emerald-400">{completionPercent}%</span>
+              <span className="text-emerald-400">
+                {flattenedLessons.length > 0
+                  ? Math.round((completedLessons.size / flattenedLessons.length) * 100)
+                  : 0}%
+              </span>
             </div>
             <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 transition-all duration-300"
-                style={{ width: `${completionPercent}%` }}
+                style={{
+                  width: `${
+                    flattenedLessons.length > 0
+                      ? (completedLessons.size / flattenedLessons.length) * 100
+                      : 0
+                  }%`,
+                  backgroundColor: accentColor,
+                }}
+                className="h-full rounded-full transition-all duration-300"
               />
             </div>
           </div>
         </div>
 
-        {/* Lesson Filter Search */}
-        <div className="p-3 border-b border-[#1F2937]">
+        {/* Search within course */}
+        <div className="p-2 border-b border-gray-800/80 bg-[#090D16]">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-500" />
             <input
               type="text"
-              placeholder="Search lessons in course..."
+              placeholder="Filter lessons & files..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="w-full bg-[#111827] text-gray-200 text-xs pl-8 pr-3 py-1.5 rounded-lg border border-gray-800 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[#111827] text-gray-200 text-xs pl-8 pr-3 py-1.5 rounded-lg border border-gray-800 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-gray-600 font-mono"
             />
           </div>
         </div>
 
-        {/* Module & Lesson Accordion Tree */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3">
-          {/* Root Lessons */}
-          {course.rootLessons.length > 0 && (
-            <div>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-gray-500 px-2 py-1 block">
-                Overview & Orientation
-              </span>
-              <div className="space-y-1 mt-1">
+        {/* Lessons Tree */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {/* If pure folder embed mode */}
+          {isDriveFolderFallback && (
+            <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-800/30 text-xs text-amber-200">
+              <div className="flex items-center gap-2 font-semibold mb-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Zero-Config Folder Active</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                All files are interactively browsable in the main canvas via Google Drive embed.
+              </p>
+            </div>
+          )}
+
+          {/* Root lessons */}
+          {(course.rootLessons || []).length > 0 && (
+            <div className="rounded-xl border border-gray-800/80 bg-[#070B14] overflow-hidden">
+              <div className="px-3 py-2 bg-[#0E1524]/60 border-b border-gray-800/60 text-xs font-semibold text-gray-300">
+                Course Overview
+              </div>
+              <div className="p-1 space-y-0.5">
                 {course.rootLessons
                   .filter((l) => !searchFilter || l.title.toLowerCase().includes(searchFilter.toLowerCase()))
                   .map((lesson) => {
@@ -268,7 +349,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
           )}
 
           {/* Modules */}
-          {course.modules.map((mod) => {
+          {dynamicModules.map((mod) => {
             const isOpen = openModules[mod.id] ?? true;
             const filteredLessons = mod.lessons.filter(
               (l) => !searchFilter || l.title.toLowerCase().includes(searchFilter.toLowerCase())
@@ -358,6 +439,17 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Report Broken Link Button */}
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-400 bg-amber-950/20 border border-amber-800/40 hover:bg-amber-950/40 transition-colors"
+              title="Report broken or inaccessible link"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Report Resource</span>
+            </button>
+
+            {/* Prev Lesson */}
             <button
               onClick={() => prevLesson && selectLesson(prevLesson.lesson, prevLesson.moduleName)}
               disabled={!prevLesson}
@@ -371,6 +463,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
               <span className="hidden sm:inline">Previous</span>
             </button>
 
+            {/* Next Lesson */}
             <button
               onClick={() => nextLesson && selectLesson(nextLesson.lesson, nextLesson.moduleName)}
               disabled={!nextLesson}
@@ -380,18 +473,19 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                   : 'border-gray-800/40 text-gray-600 cursor-not-allowed'
               }`}
             >
-              <span className="hidden sm:inline">Next Lesson</span>
+              <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </header>
 
-        {/* Dynamic Viewer */}
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {/* Viewer Canvas */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
           {activeLesson ? (
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 overflow-hidden">
-                {activeLesson.fileType === 'video' ? (
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 min-h-[500px]">
+                {/* 1. YouTube Video Engine */}
+                {activeLesson.source === 'youtube' || (activeLesson.youtubeId && !activeLesson.gdriveFileId) ? (
                   <VideoPlayer
                     lesson={activeLesson}
                     courseTitle={course.title}
@@ -400,8 +494,9 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                     onNextLesson={() => nextLesson && selectLesson(nextLesson.lesson, nextLesson.moduleName)}
                     accentColor={accentColor}
                   />
-                ) : activeLesson.fileType === 'pdf' ? (
-                  <PdfViewer
+                ) : activeLesson.fileType === 'lab' ? (
+                  /* 2. Lab Archive Engine */
+                  <LabViewer
                     lesson={activeLesson}
                     courseTitle={course.title}
                     isCompleted={completedLessons.has(activeLesson.id)}
@@ -409,6 +504,7 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                     accentColor={accentColor}
                   />
                 ) : activeLesson.fileType === 'markdown' ? (
+                  /* 3. Markdown / Notes Engine */
                   <MarkdownViewer
                     lesson={activeLesson}
                     courseTitle={course.title}
@@ -417,18 +513,23 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
                     accentColor={accentColor}
                   />
                 ) : (
-                  <LabViewer
-                    lesson={activeLesson}
-                    courseTitle={course.title}
-                    isCompleted={completedLessons.has(activeLesson.id)}
-                    onToggleComplete={() => toggleComplete(activeLesson.id)}
-                    accentColor={accentColor}
-                  />
+                  /* 4. Native Google Drive In-App Preview (PDF, Slides, Docs, Images, Videos) */
+                  <DrivePreviewViewer lesson={activeLesson} />
                 )}
               </div>
 
-              {/* Personal Notes */}
+              {/* Personal Notes Drawer */}
               <LessonNotes fileId={activeLesson.id} lessonName={activeLesson.title} />
+            </div>
+          ) : isDriveFolderFallback && course.gdriveFolderId ? (
+            /* Zero-Config Folder Fallback */
+            <div className="flex-1 flex flex-col">
+              <DriveFolderEmbedViewer
+                folderId={course.gdriveFolderId}
+                courseTitle={course.title}
+                accentColor={accentColor}
+              />
+              <LessonNotes fileId={`folder-${course.gdriveFolderId}`} lessonName={course.title} />
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
@@ -439,36 +540,13 @@ export function CourseWorkspace({ course }: CourseWorkspaceProps) {
         </div>
       </div>
 
-      {/* Unmapped Videos Drawer (Dev Mode Tool) */}
-      {showUnmappedDrawer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0E1524] border border-[#1F2937] rounded-2xl max-w-lg w-full p-6 text-white shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-800">
-              <div className="flex items-center gap-2">
-                <Youtube className="w-5 h-5 text-red-500" />
-                <h3 className="text-sm font-bold">Unmapped Videos ({course.pendingVideoCount || 0})</h3>
-              </div>
-              <button onClick={() => setShowUnmappedDrawer(false)} className="text-gray-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              These video lectures were skipped during R2 migration. Add their Unlisted YouTube IDs to <code className="text-emerald-400">src/config/youtube-videos.json</code> or run:
-            </p>
-            <div className="mt-3 p-3 bg-black/60 rounded-lg border border-gray-800 font-mono text-xs text-gray-300">
-              npm run import-yt-playlist -- --playlist=ID --course={course.slug}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setShowUnmappedDrawer(false)}
-                className="px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Report Broken Link Modal */}
+      <ReportBrokenModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        courseSlug={course.slug}
+        itemTitle={activeLesson ? activeLesson.title : course.title}
+      />
     </div>
   );
 }

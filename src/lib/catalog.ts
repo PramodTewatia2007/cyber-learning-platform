@@ -16,7 +16,7 @@ export function getCourse(slug: string): CatalogCourse | undefined {
 }
 
 export function getTrack(trackId: string): TrackConfig | undefined {
-  return catalog.tracks?.find(t => t.id === trackId);
+  return catalog.tracks?.find((t: TrackConfig) => t.id === trackId);
 }
 
 export function getRecommendedPath(): CatalogCourse[] {
@@ -40,13 +40,14 @@ export function searchCatalog(query: string): SearchResultItem[] {
   if (!q) return [];
 
   const results: SearchResultItem[] = [];
+  const courses: CatalogCourse[] = Object.values(catalog.courses || {});
 
-  for (const course of Object.values(catalog.courses || {})) {
+  for (const course of courses) {
     // Match course level
     if (
       course.title.toLowerCase().includes(q) ||
       course.description.toLowerCase().includes(q) ||
-      course.tags.some(t => t.toLowerCase().includes(q))
+      (course.tags || []).some((t: string) => t.toLowerCase().includes(q))
     ) {
       results.push({
         id: `course-${course.slug}`,
@@ -61,7 +62,7 @@ export function searchCatalog(query: string): SearchResultItem[] {
     }
 
     // Match root lessons
-    for (const lesson of course.rootLessons) {
+    for (const lesson of course.rootLessons || []) {
       if (
         lesson.title.toLowerCase().includes(q) ||
         lesson.name.toLowerCase().includes(q) ||
@@ -85,7 +86,7 @@ export function searchCatalog(query: string): SearchResultItem[] {
     }
 
     // Match modules and lessons
-    for (const mod of course.modules) {
+    for (const mod of course.modules || []) {
       if (mod.name.toLowerCase().includes(q)) {
         results.push({
           id: mod.id,
@@ -100,7 +101,7 @@ export function searchCatalog(query: string): SearchResultItem[] {
         });
       }
 
-      for (const lesson of mod.lessons) {
+      for (const lesson of mod.lessons || []) {
         if (
           lesson.title.toLowerCase().includes(q) ||
           lesson.name.toLowerCase().includes(q) ||

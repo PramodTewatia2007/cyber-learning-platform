@@ -1,11 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { getCatalog } from '@/lib/catalog';
-import { isR2Configured } from '@/lib/r2';
 import { Navbar } from '@/components/Navbar';
 import { ApiKeyBanner } from '@/components/ApiKeyBanner';
 import { LearningPath } from '@/components/LearningPath';
 import { CourseCard } from '@/components/CourseCard';
+import { CatalogCourse, TrackConfig } from '@/types';
 import {
   Shield,
   Terminal,
@@ -13,10 +13,11 @@ import {
   BookOpen,
   Film,
   FileArchive,
-  Cloud,
   CheckCircle2,
   ArrowRight,
-  HardDrive
+  Database,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { Youtube } from '@/components/YoutubeIcon';
 
@@ -24,15 +25,14 @@ export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   const catalog = getCatalog();
-  const isStorageConfigured = isR2Configured();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#090D16] text-[#E5E7EB]">
       {/* Tactical Navbar */}
-      <Navbar isStorageConfigured={isStorageConfigured} />
+      <Navbar />
 
-      {/* Storage Architecture Banner */}
-      <ApiKeyBanner isConfigured={isStorageConfigured} />
+      {/* Core 3-Layer Architecture Banner */}
+      <ApiKeyBanner />
 
       <main className="flex-1">
         {/* Tactical Hero Section */}
@@ -47,26 +47,26 @@ export default function HomePage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span className="text-gray-300">100% SELF-OWNED CLOUD STORAGE</span>
+              <span className="text-gray-300">100% FREE-TIER READY</span>
               <span className="text-gray-600">•</span>
-              <span className="text-emerald-400">ZERO RUNTIME DRIVE DEPENDENCIES</span>
+              <span className="text-emerald-400">GOOGLE DRIVE + YOUTUBE + SUPABASE</span>
             </div>
 
             {/* Main Headline */}
             <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
-              SELF-OWNED <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500">CYBERSECURITY</span> LEARNING PLATFORM
+              TACTICAL <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500">CYBERSECURITY</span> LEARNING PLATFORM
             </h1>
 
             {/* Subtitle */}
             <p className="mt-5 text-sm sm:text-base md:text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              Hybrid free-tier architecture serving all PDFs, ebooks, notes, and lab assets from your own <strong>Cloudflare R2</strong> bucket, paired with privacy-enhanced YouTube video lectures.
+              Curriculum covering offensive operations, ethical hacking, CEH v12, and SOC defense. Native in-app Google Drive document readers, cinema-mode YouTube lectures, and Supabase cloud sync.
             </p>
 
             {/* Live Stats Bar */}
             <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto">
               <div className="bg-[#111827]/80 backdrop-blur rounded-xl border border-gray-800 p-3 text-center">
                 <div className="flex items-center justify-center gap-1.5 text-red-400 mb-0.5">
-                  <Film className="w-4 h-4" />
+                  <Youtube className="w-4 h-4 text-red-500" />
                   <span className="text-lg md:text-xl font-bold font-mono">{catalog.totalVideos || 42}+</span>
                 </div>
                 <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider">Video Lectures</span>
@@ -89,11 +89,11 @@ export default function HomePage() {
               </div>
 
               <div className="bg-[#111827]/80 backdrop-blur rounded-xl border border-gray-800 p-3 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-blue-400 mb-0.5">
-                  <HardDrive className="w-4 h-4" />
-                  <span className="text-lg md:text-xl font-bold font-mono">{catalog.formattedTotalSize || '3.17 GB'}</span>
+                <div className="flex items-center justify-center gap-1.5 text-cyan-400 mb-0.5">
+                  <Database className="w-4 h-4" />
+                  <span className="text-lg md:text-xl font-bold font-mono">6 Tracks</span>
                 </div>
-                <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider">Total Library Size</span>
+                <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider">12 Courses</span>
               </div>
             </div>
 
@@ -128,124 +128,65 @@ export default function HomePage() {
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span>Full Specialization Tracks</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-              All 6 Specialization Tracks &amp; Courses
-            </h2>
-            <p className="text-xs md:text-sm text-gray-400 mt-1 max-w-xl">
-              100% self-owned cloud library. Serving documents from Cloudflare R2 and streaming video lectures natively with zero external drive links.
-            </p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  Curriculum &amp; Resource Catalog
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  12 courses spanning 6 dedicated cybersecurity domains. All files and video streams rendered natively.
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-14">
-            {catalog.tracks.map((track) => (
-              <div key={track.id} className="space-y-5">
+          {/* Tracks and Course Grid */}
+          <div className="space-y-16">
+            {catalog.tracks.map((track: TrackConfig) => (
+              <div key={track.id} className="space-y-6">
                 {/* Track Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1F2937] gap-2">
-                  <div className="flex items-center gap-3">
-                    <span
-                      style={{ backgroundColor: `${track.accent}20`, borderColor: `${track.accent}50`, color: track.accent }}
-                      className="w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm"
-                    >
-                      <Terminal className="w-4 h-4" />
-                    </span>
-                    <div>
-                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <span>{track.title}</span>
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-0.5">{track.subtitle}</p>
-                    </div>
-                  </div>
-
-                  <span
-                    style={{ color: track.accent }}
-                    className="text-xs font-mono font-semibold"
+                <div className="flex items-center gap-3 pb-3 border-b border-[#1F2937]">
+                  <div
+                    style={{ backgroundColor: `${track.accent}15`, borderColor: `${track.accent}30` }}
+                    className="w-10 h-10 rounded-xl border flex items-center justify-center text-lg"
                   >
-                    {track.courses.length} {track.courses.length === 1 ? 'Course' : 'Courses / Modules'}
-                  </span>
+                    <Shield style={{ color: track.accent }} className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <span>{track.title}</span>
+                      <span
+                        style={{ color: track.accent }}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/40 border border-gray-800 font-normal"
+                      >
+                        {track.courses.length} {track.courses.length === 1 ? 'Course' : 'Courses'}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">{track.subtitle}</p>
+                  </div>
                 </div>
 
-                {/* Course Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {track.courses.map((course) => (
-                    <CourseCard
-                      key={course.slug}
-                      course={course}
-                      trackAccent={track.accent}
-                    />
+                {/* Courses in Track */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {track.courses.map((course: CatalogCourse) => (
+                    <CourseCard key={course.slug} course={course} trackAccent={track.accent} />
                   ))}
                 </div>
               </div>
             ))}
           </div>
         </section>
-
-        {/* Architecture Guarantee Matrix */}
-        <section className="py-16 border-t border-[#1F2937]/80 bg-[#070B14]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest block mb-2">
-                HYBRID FREE-TIER STORAGE ARCHITECTURE
-              </span>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white">
-                Zero Monthly Storage Costs • Zero Egress Fees
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-[#0E1524] p-6 rounded-2xl border border-gray-800">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center mb-4">
-                  <Cloud className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-white mb-2">Cloudflare R2 Storage</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  10 GB free cloud storage with $0 egress bandwidth costs. Hosts all course PDFs, books, markdown notes, slides, and hands-on lab archives directly under your ownership.
-                </p>
-              </div>
-
-              <div className="bg-[#0E1524] p-6 rounded-2xl border border-gray-800">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center mb-4">
-                  <Youtube className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-white mb-2">Dual-Engine Video Player</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Plays both R2 video files and privacy-enhanced Unlisted YouTube videos inside the exact same native LMS course canvas, with auto-completion and auto-advance controls.
-                </p>
-              </div>
-
-              <div className="bg-[#0E1524] p-6 rounded-2xl border border-gray-800">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-4">
-                  <Terminal className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-white mb-2">Cloud-to-Cloud Migration</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Five production Node.js CLI scripts and a zero-bandwidth GitHub Action that streams content directly from Google Drive into R2 with smart deduplication and size audits.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
-      {/* Tactical Footer */}
-      <footer className="border-t border-[#1F2937] bg-[#070B14] py-10 text-xs text-gray-500">
+      {/* Footer */}
+      <footer className="border-t border-[#1F2937] bg-[#070B14] py-12 text-xs font-mono text-gray-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <Shield className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-mono text-gray-400 font-semibold">
-              CYBER ACADEMY LMS • CLOUDFLARE R2 + YOUTUBE HYBRID ARCHITECTURE
-            </span>
+          <div className="flex items-center gap-2 text-gray-400">
+            <Shield className="w-4 h-4 text-emerald-400" />
+            <span>CYBER ACADEMY LMS • GOOGLE DRIVE + YOUTUBE + SUPABASE</span>
           </div>
-
-          <div className="flex items-center gap-4 text-gray-400 font-mono text-[11px]">
-            <span>Next.js App Router</span>
-            <span>•</span>
-            <span>AWS SDK v3 S3</span>
-            <span>•</span>
-            <span>Cloudflare R2</span>
-            <span>•</span>
-            <span>Tailwind CSS</span>
+          <div>
+            <span>100% Free Tier Ready • Row Level Security • In-App Document &amp; Video Viewers</span>
           </div>
         </div>
       </footer>
