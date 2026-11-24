@@ -108,27 +108,34 @@ returns boolean language sql security definer as $$
 $$;
 
 -- Profiles Policies
+drop policy if exists "Public can view basic profiles" on public.profiles;
 create policy "Public can view basic profiles" on public.profiles
   for select using (true);
 
+drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile" on public.profiles
   for update using (auth.uid() = id);
 
 -- Tracks Policies (Public Read, Admin Write)
+drop policy if exists "Anyone can view tracks" on public.tracks;
 create policy "Anyone can view tracks" on public.tracks
   for select using (true);
 
+drop policy if exists "Admins can manage tracks" on public.tracks;
 create policy "Admins can manage tracks" on public.tracks
   for all using (public.is_admin());
 
 -- Courses Policies (Public Read Published, Admin Write)
+drop policy if exists "Anyone can view published courses" on public.courses;
 create policy "Anyone can view published courses" on public.courses
   for select using (is_published = true or public.is_admin());
 
+drop policy if exists "Admins can manage courses" on public.courses;
 create policy "Admins can manage courses" on public.courses
   for all using (public.is_admin());
 
 -- Lessons Policies (Public Read, Admin Write)
+drop policy if exists "Anyone can view lessons" on public.lessons;
 create policy "Anyone can view lessons" on public.lessons
   for select using (
     exists (
@@ -137,39 +144,50 @@ create policy "Anyone can view lessons" on public.lessons
     )
   );
 
+drop policy if exists "Admins can manage lessons" on public.lessons;
 create policy "Admins can manage lessons" on public.lessons
   for all using (public.is_admin());
 
 -- User Progress Policies (Own Rows Only)
+drop policy if exists "Users can view own progress" on public.user_progress;
 create policy "Users can view own progress" on public.user_progress
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own progress" on public.user_progress;
 create policy "Users can insert own progress" on public.user_progress
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own progress" on public.user_progress;
 create policy "Users can update own progress" on public.user_progress
   for update using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own progress" on public.user_progress;
 create policy "Users can delete own progress" on public.user_progress
   for delete using (auth.uid() = user_id);
 
 -- Lesson Notes Policies (Own Rows Only)
+drop policy if exists "Users can view own notes" on public.lesson_notes;
 create policy "Users can view own notes" on public.lesson_notes
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own notes" on public.lesson_notes;
 create policy "Users can insert own notes" on public.lesson_notes
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own notes" on public.lesson_notes;
 create policy "Users can update own notes" on public.lesson_notes
   for update using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own notes" on public.lesson_notes;
 create policy "Users can delete own notes" on public.lesson_notes
   for delete using (auth.uid() = user_id);
 
 -- Broken Link Reports Policies (Anyone can report, Admin manages)
+drop policy if exists "Anyone can create broken link report" on public.broken_link_reports;
 create policy "Anyone can create broken link report" on public.broken_link_reports
   for insert with check (true);
 
+drop policy if exists "Admins can view and manage reports" on public.broken_link_reports;
 create policy "Admins can view and manage reports" on public.broken_link_reports
   for all using (public.is_admin());
 
